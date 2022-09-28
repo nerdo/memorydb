@@ -14,15 +14,17 @@ export type SchemaList<Type> = {
 }
 
 const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) => {
-  type UnwrapInferred<Type> = {
+  type UnwrapInferredZodTypes<Type> = {
     [Property in keyof Type]: Type[Property] extends z.ZodType ? z.infer<Type[Property]> : Type[Property]
   }
-  type U = UnwrapInferred<typeof settings.schema>
+
+  type U = UnwrapInferredZodTypes<typeof settings.schema>
 
   type SchemaMap<Type> = {
     [Property in keyof Type]: Property extends keyof U ? Schema<U[Property]> : never
   }
 
+  return Object.keys(settings.schema || {})
     .map((name: keyof S) => {
       const zod = settings.schema[name]
 
@@ -33,14 +35,13 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
           return { $id: 1 }
         },
 
-        update: (r) => {
-        }
+        update: (r) => {},
       }
 
       return { name, schema }
     })
     .reduce((container, current) => {
-      container[current.name] = current.schema as keyof S extends keyof S ? Schema<UnwrapInferred<SchemaList<S>>[keyof S]> : never
+      container[current.name] = current.schema as keyof S extends keyof S ? Schema<UnwrapInferredZodTypes<SchemaList<S>>[keyof S]> : never
       return container
     }, {} as SchemaMap<U>)
 }
