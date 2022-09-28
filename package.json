@@ -1,0 +1,30 @@
+{
+  "name": "@nerdo/memorydb",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/nerdo-memory-db.umd.cjs",
+  "module": "./dist/nerdo-memory-db.js",
+  "exports": {
+    ".": {
+      "import": "./dist/nerdo-memory-db.js",
+      "require": "./dist/nerdo-memory-db.umd.cjs"
+    },
+    "./nerdo-memory-db.svg": "./dist/nerdo-memory-db.svg"
+  },
+  "devDependencies": {
+    "@nerdo/prettier-config": "^1.0.1",
+    "prettier": "^2.7.1",
+    "typescript": "^4.6.4",
+    "vite": "^3.1.0",
+    "vitest": "^0.23.4"
+  },
+  "prettier": "@nerdo/prettier-config"
+}
