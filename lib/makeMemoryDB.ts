@@ -6,6 +6,7 @@ export interface Settings<S> {
 
 export interface Schema<T> {
   new: () => { readonly $id: number } & Partial<T>
+  update: (r: Partial<T>) => void
 }
 
 export type SchemaList<Type> = {
@@ -18,19 +19,31 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
   }
   type U = UnwrapInferred<typeof settings.schema>
 
+  type SchemaMap<Type> = {
+    [Property in keyof Type]: Property extends keyof U ? Schema<U[Property]> : never
+  }
+
   return Object.keys(settings.schema)
     .map((name: keyof S) => {
       const zod = settings.schema[name]
-      const schema: Schema<z.infer<typeof zod>> = {
-        new: () => ({ $id: 1 }),
+
+      type Z = z.infer<typeof zod>
+
+      const schema: Schema<Z> = {
+        new: () => {
+          return { $id: 1 }
+        },
+
+        update: (r) => {
+        }
       }
 
       return { name, schema }
     })
     .reduce((container, current) => {
-      container[current.name] = current.schema
+      container[current.name] = current.schema as keyof S extends keyof S ? Schema<UnwrapInferred<SchemaList<S>>[keyof S]> : never
       return container
-    }, {} as Record<keyof S, Schema<U[keyof U]>>)
+    }, {} as SchemaMap<U>)
 }
 
 export const makeMemoryDB = <S extends {}>(settings: Settings<S> = {}) => {
