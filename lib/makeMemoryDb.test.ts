@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { makeMemoryDB } from './makeMemoryDB'
 import { describe, it, expect } from 'vitest'
+import { makeMemoryDB } from './makeMemoryDB'
 
 describe('makeMemoryDB', () => {
   it('should return a memory db', () => {
@@ -9,8 +9,8 @@ describe('makeMemoryDB', () => {
     expect(db).toBeDefined()
   })
 
-  describe('schema', () => {
-    it('should store the schema', () => {
+  describe('zod', () => {
+    it('should store the zod definitions', () => {
       const str = z.string()
       const obj = z.object({
         a: z.string()
@@ -23,9 +23,46 @@ describe('makeMemoryDB', () => {
         },
       })
       
-      expect(db.schema).toBeDefined()
-      expect(db.schema.str).toEqual(str)
-      expect(db.schema.obj).toEqual(obj)
+      expect(db.zod).toBeDefined()
+      expect(db.zod.str).toEqual(str)
+      expect(db.zod.obj).toEqual(obj)
+    })
+
+    describe('schema', () => {
+      it('should exist', () => {
+        const db = makeMemoryDB()
+
+        expect(db.schema).toBeDefined()
+      })
+
+      describe('new()', () => {
+        it('should return a new record', () => {
+          const contact = z.object({
+            name: z.string(),
+            email: z.string().email(),
+          })
+          const address = z.object({
+            street: z.string(),
+            city: z.string(),
+            state: z.string(),
+          })
+
+          const db = makeMemoryDB({
+            schema: {
+              contact,
+              address,
+            }
+          })
+
+          const c = db.schema.contact.new()
+          const a = db.schema.address.new()
+
+          expect(c).toBeDefined()
+          expect(c.$id).toBeDefined()
+          expect(c.name).toBeUndefined()
+          expect(c.email).toBeUndefined()
+        })
+      })
     })
   })
 })
