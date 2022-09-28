@@ -23,7 +23,6 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
     [Property in keyof Type]: Property extends keyof U ? Schema<U[Property]> : never
   }
 
-  return Object.keys(settings.schema)
     .map((name: keyof S) => {
       const zod = settings.schema[name]
 
