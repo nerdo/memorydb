@@ -6,7 +6,7 @@ export interface Settings<S> {
 }
 
 export interface Schema<T, IdType> {
-  new: () => { readonly $id: IdType } & Partial<T>
+  new: (p?: Partial<T>) => { readonly $id: IdType } & Partial<T>
   update: (r: Partial<T>) => void
 }
 
@@ -46,8 +46,8 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
       type Z = typeof zod extends z.AnyZodObject ? z.infer<typeof zod> : never
 
       const schema: Schema<Z, IdType> = {
-        new: () => {
-          return { $id: uuidv4() }
+        new: (p) => {
+          return { ...(p || {}), $id: uuidv4() }
         },
 
         update: (r) => {},
