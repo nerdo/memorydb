@@ -9,7 +9,8 @@ export interface Settings<S> {
 export interface Schema<T, IdType, ID = { readonly $id: IdType }, Model = ID & Partial<T>> {
   new: (p?: Partial<T>) => Model
   getAll: () => Model[]
-  save: (...models: Model[]) => void
+  save: (...models: Model[]) => Model[]
+  create: (...partials: Partial<T>[]) => Model[]
 }
 
 export type SchemaList<Type> = {
@@ -61,7 +62,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
         },
 
         save: (...models) => {
-          models.forEach((m) => {
+          return models.map((m) => {
             const isNew = !(m.$id in collection.cache)
 
             collection.cache[m.$id] = clone(m)
@@ -69,8 +70,14 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
             if (isNew) {
               collection.array.push(collection.cache[m.$id])
             }
+
+            return clone(collection.cache[m.$id])
           })
         },
+
+        create: (...partials) => {
+          return schema.save(...partials.map((p) => schema.new(p)))
+        }
       }
 
       return { name, schema, collection, zod }
