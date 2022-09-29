@@ -118,7 +118,7 @@ describe('makeMemoryDB', () => {
           expect(c.name).toBeUndefined()
           expect(c.email).toBeUndefined()
 
-          const a = db.schema.address.new({street: '123 main st'})
+          const a = db.schema.address.new({ street: '123 main st' })
 
           expect(a).toBeDefined()
           expect(a.$id).toBeDefined()
