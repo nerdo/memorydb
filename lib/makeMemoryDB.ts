@@ -2,11 +2,16 @@ import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 import { clone } from '@nerdo/utils'
 
-export interface Settings<S> {
+export interface Settings<S extends Record<string, unknown>> {
   schema?: SchemaList<S>
+  seeder?: (db: ReturnType<typeof makeSchema<S>>) => void
 }
 
-export interface Schema<T, IdType, ID = { readonly $id: IdType }, Model = ID & Partial<T>> {
+export type IdType = string
+
+export type DbModel<T extends {}, I = IdType> = { readonly $id: I } & Partial<T>
+
+export interface Schema<T, I, ID = { readonly $id: I }, Model = ID & Partial<T>> {
   new: (p?: Partial<T>) => Model
   getAll: () => Model[]
   save: (...models: Model[]) => Model[]
@@ -25,11 +30,11 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
   type ZodTypes = InferZodTypes<typeof settings.schema>
 
   // Might want to make this configurable...
-  type IdType = string
+  type SchemaIdType = IdType
 
   // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
   type SchemaMap<Type> = {
-    [Property in keyof Type as Type[Property] extends never ? never : Property]: Property extends keyof ZodTypes ? Schema<ZodTypes[Property], IdType> : never
+    [Property in keyof Type as Type[Property] extends never ? never : Property]: Property extends keyof ZodTypes ? Schema<ZodTypes[Property], SchemaIdType> : never
   }
 
   // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
@@ -47,12 +52,12 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
       }
 
       type Z = typeof zod extends z.AnyZodObject ? z.infer<typeof zod> : never
-      type Model = { readonly $id: IdType } & Z
-      type Collection = { cache: Record<IdType, Model>; array: Model[] }
+      type Model = { readonly $id: SchemaIdType } & Z
+      type Collection = { cache: Record<SchemaIdType, Model>; array: Model[] }
 
       const collection: Collection = { cache: {}, array: [] }
 
-      const schema: Schema<Z, IdType> = {
+      const schema: Schema<Z, SchemaIdType> = {
         new: (p) => {
           return { ...(p || {}), $id: uuidv4() }
         },
@@ -99,10 +104,16 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
 export const makeMemoryDB = <S extends {}>(settings: Settings<S> = {}) => {
   const { schema, zod } = makeSchema(settings)
 
-  return {
+  const db = {
     zod,
     schema,
   }
+
+  if (settings.seeder) {
+    settings.seeder(db)
+  }
+
+  return db
 }
 
 export default makeMemoryDB
