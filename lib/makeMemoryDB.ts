@@ -15,6 +15,7 @@ export interface Schema<T, I, ID = { readonly $id: I }, Model = ID & Partial<T>>
   new: (p?: Partial<T>) => Model
   getAll: () => Model[]
   save: (...models: Model[]) => Model[]
+  load: (...models: Model[]) => Model[]
   create: (...partials: Partial<T>[]) => Model[]
 }
 
@@ -34,7 +35,9 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
 
   // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
   type SchemaMap<Type> = {
-    [Property in keyof Type as Type[Property] extends never ? never : Property]: Property extends keyof ZodTypes ? Schema<ZodTypes[Property], SchemaIdType> : never
+    [Property in keyof Type as Type[Property] extends never ? never : Property]: Property extends keyof ZodTypes
+      ? Schema<ZodTypes[Property], SchemaIdType>
+      : never
   }
 
   // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
@@ -57,6 +60,20 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
 
       const collection: Collection = { cache: {}, array: [] }
 
+      const save: Schema<Z, SchemaIdType>['save'] = (...models) => {
+        return models.map((m) => {
+          const isNew = !(m.$id in collection.cache)
+
+          collection.cache[m.$id] = clone(m)
+
+          if (isNew) {
+            collection.array.push(collection.cache[m.$id])
+          }
+
+          return clone(collection.cache[m.$id])
+        })
+      }
+
       const schema: Schema<Z, SchemaIdType> = {
         new: (p) => {
           return { ...(p || {}), $id: uuidv4() }
@@ -66,23 +83,13 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
           return clone(collection.array)
         },
 
-        save: (...models) => {
-          return models.map((m) => {
-            const isNew = !(m.$id in collection.cache)
+        save,
 
-            collection.cache[m.$id] = clone(m)
-
-            if (isNew) {
-              collection.array.push(collection.cache[m.$id])
-            }
-
-            return clone(collection.cache[m.$id])
-          })
-        },
+        load: save,
 
         create: (...partials) => {
           return schema.save(...partials.map((p) => schema.new(p)))
-        }
+        },
       }
 
       return { name, schema, collection, zod }
