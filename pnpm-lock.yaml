@@ -2,6 +2,7 @@ lockfileVersion: 5.4
 
 specifiers:
   '@nerdo/prettier-config': ^1.0.1
+  '@nerdo/utils': ^1.2.1
   '@types/uuid': ^8.3.4
   prettier: ^2.7.1
   typescript: ^4.6.4
@@ -11,6 +12,7 @@ specifiers:
   zod: ^3.19.1
 
 dependencies:
+  '@nerdo/utils': 1.2.1
   uuid: 9.0.0
 
 devDependencies:
@@ -45,6 +47,10 @@ packages:
   /@nerdo/prettier-config/1.0.1:
     resolution: {integrity: sha512-ot5RUWAJTHkceX7D2oyztTGxqtVBRbahM/gk4JthEChxPp+TzTm9BZxCOsg9oD6Xq/rQ6ASVYUuSHWXVmybbDA==}
     dev: true
+
+  /@nerdo/utils/1.2.1:
+    resolution: {integrity: sha512-yRYPtGymgCvtjz+GkYQ/RLiOkBKky2EretA54JVpyYtczholA+ZNLG5WDAgZ5gyCCCc7vvEQiBEsAvdvMJiCXQ==}
+    dev: false
 
   /@types/chai-subset/1.3.3:
     resolution: {integrity: sha512-frBecisrNGz+F4T6bcc+NLeolfiojh5FxW2klu669+8BARtyQv2C/GkNW6FUodVe4BroGMP/wER/YDGc7rEllw==}

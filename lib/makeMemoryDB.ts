@@ -1,13 +1,15 @@
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
+import { clone } from '@nerdo/utils'
 
 export interface Settings<S> {
   schema?: SchemaList<S>
 }
 
-export interface Schema<T, IdType> {
-  new: (p?: Partial<T>) => { readonly $id: IdType } & Partial<T>
   update: (r: Partial<T>) => void
+export interface Schema<T, IdType, ID = { readonly $id: IdType }, Model = ID & Partial<T>> {
+  new: (p?: Partial<T>) => Model
+  getAll: () => Model[]
 }
 
 export type SchemaList<Type> = {
@@ -44,6 +46,10 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
       }
 
       type Z = typeof zod extends z.AnyZodObject ? z.infer<typeof zod> : never
+      type Model = { readonly $id: IdType } & Z
+      type Collection = { cache: Record<IdType, Model>, array: Model[] }
+
+      const collection: Collection = { cache: {}, array: [] }
 
       const schema: Schema<Z, IdType> = {
         new: (p) => {
@@ -51,9 +57,12 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
         },
 
         update: (r) => {},
+        getAll: () => {
+          return clone(collection.array)
+        },
       }
 
-      return { name, schema, zod }
+      return { name, schema, collection, zod }
     })
     .reduce(
       (container, current) => {
