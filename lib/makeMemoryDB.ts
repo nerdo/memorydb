@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { v4 as uuidv4 } from 'uuid' 
+import { v4 as uuidv4 } from 'uuid'
 
 export interface Settings<S> {
   schema?: SchemaList<S>
@@ -11,27 +11,34 @@ export interface Schema<T, IdType> {
 }
 
 export type SchemaList<Type> = {
-  [Property in keyof Type]: Type[Property] extends z.ZodTypeAny ? Type[Property] : never
+  [Property in keyof Type]: Type[Property] extends z.AnyZodObject ? Type[Property] : never
 }
 
 const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) => {
-  type UnwrapInferredZodTypes<Type> = {
-    [Property in keyof Type]: Type[Property] extends z.ZodType ? z.infer<Type[Property]> : Type[Property]
+  type InferZodTypes<Type> = {
+    [Property in keyof Type]: Type[Property] extends z.AnyZodObject ? z.infer<Type[Property]> : never
   }
 
-  type U = UnwrapInferredZodTypes<typeof settings.schema>
+  type ZodTypes = InferZodTypes<typeof settings.schema>
 
+  // Might want to make this configurable...
   type IdType = string
 
   type SchemaMap<Type> = {
-    [Property in keyof Type]: Property extends keyof U ? Schema<U[Property], IdType> : never
+    // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
+    [Property in keyof Type as Type[Property] extends never ? never : Property]: Property extends keyof ZodTypes ? Schema<ZodTypes[Property], IdType> : never
   }
 
   return Object.keys(settings.schema || {})
     .map((name: keyof S) => {
       const zod = settings.schema[name]
 
-      type Z = z.infer<typeof zod>
+      // Runtime equivalent of filtering out non inferred zod keys
+      if (!(zod instanceof z.ZodObject)) {
+        return false
+      }
+
+      type Z = typeof zod extends z.AnyZodObject ? z.infer<typeof zod> : never
 
       const schema: Schema<Z, IdType> = {
         new: () => {
@@ -44,9 +51,10 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
       return { name, schema }
     })
     .reduce((container, current) => {
-      container[current.name] = current.schema as keyof S extends keyof S ? Schema<UnwrapInferredZodTypes<SchemaList<S>>[keyof S], IdType> : never
+      if (!current) return container
+      container[current.name as keyof typeof container] = current.schema as typeof container[keyof typeof container]
       return container
-    }, {} as SchemaMap<U>)
+    }, {} as SchemaMap<ZodTypes>)
 }
 
 export const makeMemoryDB = <S extends {}>(settings: Settings<S> = {}) => {
