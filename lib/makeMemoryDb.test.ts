@@ -127,6 +127,25 @@ describe('makeMemoryDB', () => {
           expect(a.state).toBeUndefined()
         })
       })
+
+      describe('getAll()', () => {
+        it('should always return a fresh set of data', () => {
+          const obj = z.object({})
+
+          const db = makeMemoryDB({
+            schema: {
+              obj,
+            },
+          })
+
+          const a = db.schema.obj.getAll()
+          const b = db.schema.obj.getAll()
+
+          expect(a).toEqual([])
+          expect(b).toEqual([])
+          expect(a).not.toBe(b)
+        })
+      })
     })
   })
 })
