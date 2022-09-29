@@ -302,6 +302,71 @@ describe('makeMemoryDB()', () => {
           expect(r1[2]).not.toBe(r2[2])
         })
       })
+
+      describe('find()', () => {
+        it('should find and return a list of matching objects', () => {
+          const contact = z.object({
+            name: z.string(),
+            email: z.string().email(),
+          })
+
+          const contacts = [
+            { $id: '0', name: 'Jane', email: 'jane@example.test' },
+            { $id: '1', name: 'Bob', email: 'bob@example.test' },
+            { $id: '2', name: 'Mary', email: 'mary@example.test' },
+            { $id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { $id: '4', name: 'Rick', email: 'rick@example.test' },
+            { $id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { $id: '6', name: 'Cathy', email: 'cathy@example.test' },
+            { $id: '7', name: 'Miles', email: 'miles@example.test' },
+            { $id: '8', name: 'Larry', email: 'larry@example.test' },
+            { $id: '9', name: 'Stanley', email: 'stanley@example.test' },
+            { $id: '10', name: 'Melissa', email: 'melissa@example.test' },
+            { $id: '11', name: 'Mike', email: 'mike@example.test' },
+            { $id: '12', name: 'Shannon', email: 'shannon@example.test' },
+            { $id: '13', name: 'Dillan', email: 'dillan@example.test' },
+            { $id: '14', name: 'Victor', email: 'victor@example.test' },
+            { $id: '15', name: 'Nicole', email: 'nicole@example.test' },
+            { $id: '16', name: 'Stacy', email: 'stacy@example.test' },
+            { $id: '17', name: 'Gordon', email: 'gordon@example.test' },
+            { $id: '18', name: 'Henry', email: 'henry@example.test' },
+            { $id: '19', name: 'Dwight', email: 'dwight@example.test' },
+          ]
+
+          const db = makeMemoryDB({
+            schema: {
+              contact,
+            },
+            seeder(db) {
+              db.schema.contact.load(...contacts)
+            },
+          })
+
+          // This is a contrived scenario meant to illustrate that, with enough context, elaborate matching algorithms can be achieved.
+          // This matcher matches the 3rd object that it finds with an 'o' in the name
+          // TODO: pass extra as an option to initialize extra and infer its shape from there
+          const matcher: Parameters<typeof db.schema.contact.find<{ numMatches: number }>>[0] = (obj, context) => {
+            const objMatches = obj.name?.match(/o/i)
+
+            if (objMatches) {
+              context.extra.numMatches = (context.extra.numMatches || 0) + 1
+            }
+
+            return context.extra.numMatches === 3
+          }
+          const stopper: Parameters<typeof db.schema.contact.find>[1] = (context) => {
+            return context.results.length > 0
+          }
+
+          const r1 = db.schema.contact.find(matcher, stopper)
+          const r2 = db.schema.contact.find(matcher, stopper)
+
+          expect(r1).toEqual([contacts[14]])
+          expect(r2).toEqual([contacts[14]])
+          expect(r1).toEqual(r2)
+          expect(r1[0]).not.toBe(r2[0])
+        })
+      })
     })
   })
 })
