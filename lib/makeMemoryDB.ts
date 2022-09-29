@@ -6,10 +6,10 @@ export interface Settings<S> {
   schema?: SchemaList<S>
 }
 
-  update: (r: Partial<T>) => void
 export interface Schema<T, IdType, ID = { readonly $id: IdType }, Model = ID & Partial<T>> {
   new: (p?: Partial<T>) => Model
   getAll: () => Model[]
+  save: (m: Model) => void
 }
 
 export type SchemaList<Type> = {
@@ -47,7 +47,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
 
       type Z = typeof zod extends z.AnyZodObject ? z.infer<typeof zod> : never
       type Model = { readonly $id: IdType } & Z
-      type Collection = { cache: Record<IdType, Model>, array: Model[] }
+      type Collection = { cache: Record<IdType, Model>; array: Model[] }
 
       const collection: Collection = { cache: {}, array: [] }
 
@@ -56,9 +56,18 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
           return { ...(p || {}), $id: uuidv4() }
         },
 
-        update: (r) => {},
         getAll: () => {
           return clone(collection.array)
+        },
+
+        save: (m) => {
+          const isNew = !(m.$id in collection.cache)
+
+          collection.cache[m.$id] = clone(m)
+
+          if (isNew) {
+            collection.array.push(collection.cache[m.$id])
+          }
         },
       }
 
