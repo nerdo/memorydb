@@ -25,6 +25,36 @@ describe('makeMemoryDB', () => {
       expect(db.zod.obj).toEqual(obj)
     })
 
+    it('should filter out non-object types', () => {
+      const db = makeMemoryDB({
+        schema: {
+          string: z.string(),
+          number: z.number(),
+          boolean: z.boolean(),
+          bigint: z.bigint(),
+          date: z.date(),
+          undefined: z.undefined(),
+          null: z.null(),
+          void: z.void(),
+          any: z.any(),
+          unknown: z.unknown(),
+          never: z.never(),
+        },
+      })
+
+      expect(db.zod.string).toBeUndefined()
+      expect(db.zod.number).toBeUndefined()
+      expect(db.zod.boolean).toBeUndefined()
+      expect(db.zod.bigint).toBeUndefined()
+      expect(db.zod.date).toBeUndefined()
+      expect(db.zod.undefined).toBeUndefined()
+      expect(db.zod.null).toBeUndefined()
+      expect(db.zod.void).toBeUndefined()
+      expect(db.zod.any).toBeUndefined()
+      expect(db.zod.unknown).toBeUndefined()
+      expect(db.zod.never).toBeUndefined()
+    })
+
     describe('schema', () => {
       it('should exist', () => {
         const db = makeMemoryDB()
