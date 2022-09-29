@@ -41,8 +41,8 @@ describe('makeMemoryDB()', () => {
             db.schema.contact.create(...contacts)
 
             // Use save for restoring persisted models (e.g. restoring from a memoryDB dump)
-            // ...save seems a bit awkward, maybe have a 'load' alias here for clarity?
-            db.schema.address.save(...addresses)
+            // Note: calling save() here works too, but using the alias "load" makes more sense in this context
+            db.schema.address.load(...addresses)
           },
         })
 
