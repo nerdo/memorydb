@@ -173,6 +173,37 @@ describe('makeMemoryDB', () => {
           expect(c).toEqual(r1[0])
           expect(c).not.toBe(r1[0])
         })
+
+        it('should save multiple records', () => {
+          const contact = z.object({
+            name: z.string(),
+            email: z.string().email(),
+          })
+
+          const db = makeMemoryDB({
+            schema: {
+              contact,
+            },
+          })
+
+          const c = [
+            { $id: 'test1', name: 'Jane', email: 'jane@example.test' },
+            { $id: 'test2', name: 'Bob', email: 'bob@example.test' },
+          ]
+
+          db.schema.contact.save(...c)
+
+          const r1 = db.schema.contact.getAll()
+          const r2 = db.schema.contact.getAll()
+
+          expect(r1).toEqual(c)
+          expect(r2).toEqual(c)
+          expect(r1).not.toBe(r2)
+          expect(c[0]).toEqual(r1[0])
+          expect(c[0]).not.toBe(r1[0])
+          expect(c[1]).toEqual(r1[1])
+          expect(c[1]).not.toBe(r1[1])
+        })
       })
     })
   })
