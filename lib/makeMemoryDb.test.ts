@@ -265,6 +265,43 @@ describe('makeMemoryDB()', () => {
           expect(c[1].email).toEqual(s[1].email)
         })
       })
+
+      describe('findById()', () => {
+        it('should find and return a list of objects by $id', () => {
+          const contact = z.object({
+            name: z.string(),
+            email: z.string().email(),
+          })
+
+          const contacts = [
+            { $id: '0', name: 'Jane', email: 'jane@example.test' },
+            { $id: '1', name: 'Bob', email: 'bob@example.test' },
+            { $id: '2', name: 'Mary', email: 'mary@example.test' },
+            { $id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { $id: '4', name: 'Rick', email: 'rick@example.test' },
+            { $id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { $id: '6', name: 'Cathy', email: 'cathy@example.test' },
+          ]
+
+          const db = makeMemoryDB({
+            schema: {
+              contact,
+            },
+            seeder(db) {
+              db.schema.contact.load(...contacts)
+            },
+          })
+
+          const r1 = db.schema.contact.findById('4', '6', 'NOT FOUND', '1')
+          const r2 = db.schema.contact.findById('4', '6', 'NOT FOUND', '1')
+
+          expect(r1).toHaveLength(3)
+          expect(r1).toEqual([contacts[4], contacts[6], contacts[1]])
+          expect(r1[0]).not.toBe(r2[0])
+          expect(r1[1]).not.toBe(r2[1])
+          expect(r1[2]).not.toBe(r2[2])
+        })
+      })
     })
   })
 })
