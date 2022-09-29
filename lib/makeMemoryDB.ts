@@ -24,9 +24,14 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
   // Might want to make this configurable...
   type IdType = string
 
+  // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
   type SchemaMap<Type> = {
-    // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
     [Property in keyof Type as Type[Property] extends never ? never : Property]: Property extends keyof ZodTypes ? Schema<ZodTypes[Property], IdType> : never
+  }
+
+  // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
+  type ZodMap<Type> = {
+    [Property in keyof Type as Type[Property] extends never ? never : Property]: Property extends keyof ZodTypes ? ZodTypes[Property] : never
   }
 
   return Object.keys(settings.schema || {})
@@ -48,19 +53,24 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
         update: (r) => {},
       }
 
-      return { name, schema }
+      return { name, schema, zod }
     })
-    .reduce((container, current) => {
-      if (!current) return container
-      container[current.name as keyof typeof container] = current.schema as typeof container[keyof typeof container]
-      return container
-    }, {} as SchemaMap<ZodTypes>)
+    .reduce(
+      (container, current) => {
+        if (!current) return container
+
+        container.schema[current.name as keyof typeof container.schema] = current.schema as typeof container.schema[keyof typeof container.schema]
+
+        container.zod[current.name as keyof typeof container.zod] = current.zod as typeof container.zod[keyof typeof container.zod]
+
+        return container
+      },
+      { schema: {}, zod: {} } as { schema: SchemaMap<ZodTypes>; zod: ZodMap<ZodTypes> }
+    )
 }
 
 export const makeMemoryDB = <S extends {}>(settings: Settings<S> = {}) => {
-  const { schema: zod } = settings
-
-  const schema = makeSchema(settings)
+  const { schema, zod } = makeSchema(settings)
 
   return {
     zod,
