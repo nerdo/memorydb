@@ -17,6 +17,7 @@ export interface Schema<T, I, ID = { readonly $id: I }, Model = ID & Partial<T>>
   save: (...models: Model[]) => Model[]
   load: (...models: Model[]) => Model[]
   create: (...partials: Partial<T>[]) => Model[]
+  findById: (...$ids: I[]) => Model[]
 }
 
 export type SchemaList<Type> = {
@@ -91,6 +92,18 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
 
         create: (...partials) => {
           return schema.save(...partials.map((p) => schema.new(p)))
+        },
+
+        findById: (...$ids) => {
+          return $ids.reduce((results: Model[], $id) => {
+            const obj = collection.cache[$id]
+
+            if (obj) {
+              results.push(clone(obj))
+            }
+
+            return results
+          }, [])
         },
       }
 
