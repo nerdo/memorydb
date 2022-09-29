@@ -1,12 +1,65 @@
 import { z } from 'zod'
 import { describe, it, expect } from 'vitest'
-import { makeMemoryDB } from './makeMemoryDB'
+import { DbModel, makeMemoryDB } from './makeMemoryDB'
 
 describe('makeMemoryDB()', () => {
   it('should return a memory db', () => {
     const db = makeMemoryDB()
 
     expect(db).toBeDefined()
+  })
+
+  describe('settings', () => {
+    describe('seeder', () => {
+      it('should seed the database', () => {
+        const contact = z.object({
+          name: z.string(),
+          email: z.string().email(),
+        })
+
+        const address = z.object({
+          street: z.string(),
+          city: z.string(),
+          state: z.string(),
+        })
+
+        const contacts: z.infer<typeof contact>[] = [
+          { name: 'Jane', email: 'jane@example.test' },
+          { name: 'Bob', email: 'bob@example.test' },
+          { name: 'Ada', email: 'ada@example.test' },
+        ]
+
+        const addresses: DbModel<z.infer<typeof address>>[] = [{ $id: 'the-whitehouse', street: '1600 Pennsylvania Ave', city: 'Washington', state: 'DC' }]
+
+        const testDB = makeMemoryDB({
+          schema: {
+            contact,
+            address,
+          },
+          seeder: (db) => {
+            // Use create for models that don't have $id (creating new models)
+            db.schema.contact.create(...contacts)
+
+            // Use save for restoring persisted models (e.g. restoring from a memoryDB dump)
+            // ...save seems a bit awkward, maybe have a 'load' alias here for clarity?
+            db.schema.address.save(...addresses)
+          },
+        })
+
+        const c = testDB.schema.contact.getAll()
+
+        expect(c).toHaveLength(contacts.length)
+        expect(c[0]).toEqual(expect.objectContaining(contacts[0]))
+        expect(c[1]).toEqual(expect.objectContaining(contacts[1]))
+        expect(c[2]).toEqual(expect.objectContaining(contacts[2]))
+
+        const a = testDB.schema.address.getAll()
+
+        expect(a).toHaveLength(addresses.length)
+        expect(a).toEqual(addresses)
+        expect(a).not.toBe(addresses)
+      })
+    })
   })
 
   describe('returned instance', () => {
