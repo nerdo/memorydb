@@ -205,6 +205,37 @@ describe('makeMemoryDB', () => {
           expect(c[1]).not.toBe(r1[1])
         })
       })
+
+      describe('create()', () => {
+        it('should make new models and persist them', () => {
+          const contact = z.object({
+            name: z.string(),
+            email: z.string().email(),
+          })
+
+          const db = makeMemoryDB({
+            schema: {
+              contact,
+            },
+          })
+
+          const s = [
+            { name: 'Jane', email: 'jane@example.test' },
+            { name: 'Bob', email: 'bob@example.test' },
+          ]
+
+          const c = db.schema.contact.create(...s)
+
+          expect(c).toBeDefined()
+          expect(c).not.toBe(s)
+          expect(c[0].$id).toBeDefined()
+          expect(c[0].name).toEqual(s[0].name)
+          expect(c[0].email).toEqual(s[0].email)
+          expect(c[1].$id).toBeDefined()
+          expect(c[1].name).toEqual(s[1].name)
+          expect(c[1].email).toEqual(s[1].email)
+        })
+      })
     })
   })
 })
