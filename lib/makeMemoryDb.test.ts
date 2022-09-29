@@ -11,20 +11,17 @@ describe('makeMemoryDB', () => {
 
   describe('zod', () => {
     it('should store the zod definitions', () => {
-      const str = z.string()
       const obj = z.object({
         a: z.string(),
       })
 
       const db = makeMemoryDB({
         schema: {
-          str,
           obj,
         },
       })
 
       expect(db.zod).toBeDefined()
-      expect(db.zod.str).toEqual(str)
       expect(db.zod.obj).toEqual(obj)
     })
 
@@ -33,6 +30,36 @@ describe('makeMemoryDB', () => {
         const db = makeMemoryDB()
 
         expect(db.schema).toBeDefined()
+      })
+
+      it('should filter out non-object types', () => {
+        const db = makeMemoryDB({
+          schema: {
+            string: z.string(),
+            number: z.number(),
+            boolean: z.boolean(),
+            bigint: z.bigint(),
+            date: z.date(),
+            undefined: z.undefined(),
+            null: z.null(),
+            void: z.void(),
+            any: z.any(),
+            unknown: z.unknown(),
+            never: z.never(),
+          },
+        })
+
+        expect(db.schema.string).toBeUndefined()
+        expect(db.schema.number).toBeUndefined()
+        expect(db.schema.boolean).toBeUndefined()
+        expect(db.schema.bigint).toBeUndefined()
+        expect(db.schema.date).toBeUndefined()
+        expect(db.schema.undefined).toBeUndefined()
+        expect(db.schema.null).toBeUndefined()
+        expect(db.schema.void).toBeUndefined()
+        expect(db.schema.any).toBeUndefined()
+        expect(db.schema.unknown).toBeUndefined()
+        expect(db.schema.never).toBeUndefined()
       })
 
       describe('new()', () => {
