@@ -11,6 +11,17 @@ export type IdType = string
 
 export type DbModel<T extends {}, I = IdType> = { readonly $id: I } & Partial<T>
 
+export type FindContext<M, Extra extends {} = unknown> = {
+  readonly results: M[]
+  readonly options: FindOptions<M>
+  index: number
+  extra: Extra
+}
+
+export type FindOptions<M, Extra extends {} = unknown> = {
+  extra: Extra
+}
+
 export interface Schema<T, I, ID = { readonly $id: I }, Model = ID & Partial<T>> {
   new: (p?: Partial<T>) => Model
   getAll: () => Model[]
@@ -18,6 +29,13 @@ export interface Schema<T, I, ID = { readonly $id: I }, Model = ID & Partial<T>>
   load: (...models: Model[]) => Model[]
   create: (...partials: Partial<T>[]) => Model[]
   findById: (...$ids: I[]) => Model[]
+
+  // TODO find should deal with the Model in the DB, i.e. the Zod model... maybe - might depend on whether or not we validate with Zod
+  find: <E extends {} = unknown, Extra = Partial<E>>(
+    matcher: (m: Model, context: FindContext<Model, Extra>) => boolean,
+    stopper: (context: FindContext<Model, Extra>) => boolean,
+    options?: FindOptions<Model>
+  ) => Model[]
 }
 
 export type SchemaList<Type> = {
@@ -104,6 +122,32 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
 
             return results
           }, [])
+        },
+
+        // find: <Extra>(matcher, stopper, options) => {
+        find: (matcher, stopper, options) => {
+          type Context = Parameters<typeof matcher>[1]
+
+          const context: Context = {
+            results: [],
+            options,
+            index: 0,
+            extra: {},
+          }
+
+          for (context.index = 0; context.index < collection.array.length; context.index++) {
+            const m = collection.array[context.index]
+
+            if (matcher(m, context)) {
+              context.results.push(clone(m))
+            }
+
+            if (stopper(context)) {
+              break
+            }
+          }
+
+          return context.results
         },
       }
 
