@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { describe, it, expect } from 'vitest'
-import { DbModel, makeMemoryDB } from './makeMemoryDB'
+import { DbModel, FindFunctionOptions, makeMemoryDB } from './makeMemoryDB'
 
 describe('makeMemoryDB()', () => {
   it('should return a memory db', () => {
@@ -342,14 +342,15 @@ describe('makeMemoryDB()', () => {
             },
           })
 
-          // This is a contrived scenario meant to illustrate that, with enough context, elaborate matching algorithms can be achieved.
+          const options = { extra: { numMatches: 0 } }
+
+          // This is a contrived example meant to illustrate that, with enough context, elaborate matching algorithms can be achieved.
           // This matcher matches the 3rd object that it finds with an 'o' in the name
-          // TODO: pass extra as an option to initialize extra and infer its shape from there
-          const matcher: Parameters<typeof db.schema.contact.find<{ numMatches: number }>>[0] = (obj, context) => {
+          const matcher: Parameters<typeof db.schema.contact.find<typeof options.extra>>[0] = (obj, context) => {
             const objMatches = obj.name?.match(/o/i)
 
             if (objMatches) {
-              context.extra.numMatches = (context.extra.numMatches || 0) + 1
+              context.extra.numMatches++
             }
 
             return context.extra.numMatches === 3
@@ -358,8 +359,8 @@ describe('makeMemoryDB()', () => {
             return context.results.length > 0
           }
 
-          const r1 = db.schema.contact.find(matcher, stopper)
-          const r2 = db.schema.contact.find(matcher, stopper)
+          const r1 = db.schema.contact.find(matcher, stopper, options)
+          const r2 = db.schema.contact.find(matcher, stopper, options)
 
           expect(r1).toEqual([contacts[14]])
           expect(r2).toEqual([contacts[14]])
