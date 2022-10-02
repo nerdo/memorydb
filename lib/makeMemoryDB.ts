@@ -11,14 +11,15 @@ export type IdType = string
 
 export type DbModel<T extends {}, I = IdType> = { readonly $id: I } & Partial<T>
 
-export type FindContext<M, Extra extends {} = unknown> = {
-  readonly results: M[]
-  readonly options: FindOptions<M>
+export interface FindFunctionContext<Model, Extra extends object> {
+  readonly results: Model[]
+  readonly options: FindFunctionOptions<Extra>
   index: number
   extra: Extra
 }
 
-export type FindOptions<M, Extra extends {} = unknown> = {
+export interface FindFunctionOptions<Extra extends object> {
+  // Value used to initialize context.extra in the matcher and stopper callbacks.
   extra: Extra
 }
 
@@ -31,10 +32,10 @@ export interface Schema<T, I, ID = { readonly $id: I }, Model = ID & Partial<T>>
   findById: (...$ids: I[]) => Model[]
 
   // TODO find should deal with the Model in the DB, i.e. the Zod model... maybe - might depend on whether or not we validate with Zod
-  find: <E extends {} = unknown, Extra = Partial<E>>(
-    matcher: (m: Model, context: FindContext<Model, Extra>) => boolean,
-    stopper: (context: FindContext<Model, Extra>) => boolean,
-    options?: FindOptions<Model>
+  find: <Extra extends object>(
+    matcher: (m: Model, context: FindFunctionContext<Model, Extra>) => boolean,
+    stopper: (context: FindFunctionContext<Model, Extra>) => boolean,
+    options?: FindFunctionOptions<Extra>
   ) => Model[]
 }
 
@@ -132,7 +133,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Settings<S>) =>
             results: [],
             options,
             index: 0,
-            extra: {},
+            extra: options?.extra ? clone(options.extra) : void 0,
           }
 
           for (context.index = 0; context.index < collection.array.length; context.index++) {
