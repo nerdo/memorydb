@@ -33,7 +33,7 @@
     "zod": "^3.19.1"
   },
   "dependencies": {
-    "@nerdo/utils": "^1.2.1"
+    "@nerdo/utils": "^2.0.0"
   },
   "license": "MIT"
 }
