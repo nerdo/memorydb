@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { describe, it, expect } from 'vitest'
-import { DbModel, FindFunctionOptions, makeMemoryDB } from './makeMemoryDB'
+import { DbModel, makeMemoryDB } from './makeMemoryDB'
 
 describe('makeMemoryDB()', () => {
   it('should return a memory db', () => {
