@@ -24,8 +24,22 @@ export interface FindFunctionContext<Model, Extra extends object> {
 }
 
 export interface FindFunctionOptions<Extra extends object> {
-  // Value used to initialize context.extra in the matcher and stopper callbacks.
+  /**
+    * Value used to initialize context.extra in the matcher and stopper callbacks.
+    *
+    * @remarks
+    * `extra` is an object that can be used to implement advanced find algorithms.
+    *
+    * For example, if you want to find every 3rd match, `extra` could have a property 
+    * keeping track of how many matches were found so far in the matcher function
+    * without affecting `context.results`.
+    */
   extra?: Extra
+
+  /**
+    * Whether to search the collection in reverse.
+    * @defaultValue false
+    */
   reverse?: boolean
 
   /**
