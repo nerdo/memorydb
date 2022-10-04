@@ -29,8 +29,8 @@ export interface FindFunctionOptions<Extra extends object> {
   reverse?: boolean
 
   /**
-    * The index to start the find operation from.
-    */
+   * The index to start the find operation from.
+   */
   startingIndex?: number
 }
 
@@ -154,7 +154,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
         const loop = (() => {
           if (options?.reverse) {
             return {
-              start: Math.max(0, collection.array.length - 1),
+              start: Math.max(0, options?.startingIndex || collection.array.length - 1),
               condition: () => context.index > 0,
               iterate: () => context.index--,
             }
