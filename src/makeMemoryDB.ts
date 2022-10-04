@@ -18,6 +18,7 @@ export type StoredModelUpdate<T extends {}> = Identifiable & Partial<T>
 export interface FindFunctionContext<Model, Extra extends object> {
   readonly results: Model[]
   index: number
+  count: number
   readonly options?: FindFunctionOptions<Extra>
   extra?: Extra
 }
@@ -41,6 +42,8 @@ export interface Schema<T extends {}, I, Model = StoredModel<T>> {
     stopper: (context: FindFunctionContext<Model, Extra>) => boolean,
     options?: FindFunctionOptions<Extra>
   ) => Model[]
+
+  count: () => number
 }
 
 export type SchemaList<Type> = {
@@ -131,6 +134,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
           results: [],
           options,
           index: 0,
+          count: collection.array.length,
           extra: options?.extra ? clone(options.extra) : void 0,
         }
 
@@ -148,6 +152,8 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
 
         return context.results
       },
+
+      count: () => collection.array.length,
     }
 
     return { isValidSchema, name, schema, collection, zod }
