@@ -20,12 +20,12 @@ export interface FindFunctionContext<Model, Extra extends object> {
   index: number
   count: number
   readonly options?: FindFunctionOptions<Extra>
-  extra?: Extra
+  extra: Extra
 }
 
 export interface FindFunctionOptions<Extra extends object> {
   // Value used to initialize context.extra in the matcher and stopper callbacks.
-  extra: Extra
+  extra?: Extra
 }
 
 export interface Schema<T extends {}, I, Model = StoredModel<T>> {
@@ -142,7 +142,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
           options,
           index: 0,
           count: collection.array.length,
-          extra: options?.extra ? clone(options.extra) : void 0,
+          extra: options?.extra ? clone(options?.extra || {}) : ({} as Context['extra']),
         }
 
         for (context.index = 0; context.index < collection.array.length; context.index++) {
