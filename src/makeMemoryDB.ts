@@ -101,23 +101,113 @@ export interface FindFunctionOptions<Extra extends object> {
   startingIndex?: number
 }
 
+/**
+ * The schema API for an entity.
+ *
+ * @typeParam T - the shape of the entity
+ * @typeParam I - the type of the `$id` field in stored models
+ * @typeParam Model - the model as it exists in the DB (with the `$id` field)
+ */
 export interface Schema<T extends {}, I, Model = StoredModel<T>> {
+  /**
+   * Creates a new Model with an ID that can be persisted back to the DB.
+   *
+   * @param p - Properties to set on the new model.
+   *
+   * @returns The newly-primed model.
+   */
   new: (p?: Partial<T>) => Model
+
+  /**
+   * Gets all models from the DB.
+   *
+   * @returns An array of all models in the collection.
+   */
   getAll: () => Model[]
+
+  /**
+   * Saves models to the DB.
+   *
+   * @param models - Models to save to the DB.
+   *
+   * @returns An array of models that were saved.
+   */
   save: (...models: Model[]) => Model[]
+
+  /**
+   * Alias for {@link save}.
+   *
+   * @remarks
+   * Calling {@link save} from a seeder reads oddly,
+   * so this alias was created to make the intent of the seeder clearer
+   * even though it is actually performing the {@link save} operation under the hood.
+   *
+   * @param models - Models to load into the DB.
+   *
+   * @returns An array of models that were loaded into the DB.
+   */
   load: (...models: Model[]) => Model[]
+
+  /**
+   * Creates and persists models to the DB.
+   *
+   * @remarks
+   * This is similar to calling {@link new} and then calling {@link save}.
+   * It has the added benefit of being able to create multiple models in a single call, unlike {@link new}.
+   *
+   * @param partials - Sets of properties to set on each model.
+   *
+   * @returns An array of models that were created.
+   */
   create: (...partials: Partial<T>[]) => Model[]
+
+  /**
+   * Finds models by `$id`.
+   *
+   * @remarks
+   * Under the hood, this is implemented with a lookup by `$id`.
+   * It is more performant than the general-purpose {@link find} function.
+   *
+   * Note: Any `$id`s that were not found in the collection will not be represented in the results.
+   * In other words, the results count <= the `$ids` count.
+   *
+   * @param $ids - Model IDs to find.
+   *
+   * @returns An array of models that match the `$id`s, in the order that the `$id`s were given.
+   */
   findById: (...$ids: I[]) => Model[]
 
   // TODO find should deal with the Model in the DB, i.e. the Zod model... maybe - might depend on whether or not we validate with Zod
+  /**
+   * Finds models in the collection.
+   *
+   * @remarks
+   * This is a general-purpose function designed to support a wide range of use cases.
+   *
+   * @param matcher - A function that tests for matches.
+   * @param stopper - A function that short-circuits the find operation when it returns true. Otherwise, find iterates through the entire collection.
+   * @param options - An object that configures that find operation's behavior.
+   *
+   * @returns An array of models for which the `matcher` function returned true.
+   */
   find: <Extra extends object>(
     matcher: (m: Model, context: FindFunctionContext<Model, Extra>) => boolean,
     stopper: (context: FindFunctionContext<Model, Extra>) => boolean,
     options?: FindFunctionOptions<Extra>
   ) => Model[]
 
+  /**
+   * @returns The number of models in the collection.
+   */
   count: () => number
 
+  /**
+   * Useful internal structures, for debugging purposes.
+   *
+   * @remarks
+   * Non-debug code should NOT depend on this as it can change at any time.
+   * This is only exposed for debugging purposes.
+   */
   debug: {
     collection: {
       cache: Record<IdType, Model>
@@ -272,6 +362,13 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
   )
 }
 
+/**
+ * Makes a new, strongly-typed instance of an in-memory DB.
+ *
+ * @param settings - The settings governing the shape and behavior of the DB.
+ *
+ * @returns The memory DB.
+ */
 export const makeMemoryDB = <S extends {}>(settings: Settings<S> = {}) => {
   const { schema, zod } = makeSchema({ schema: {} as SchemaList<S>, ...settings })
 
