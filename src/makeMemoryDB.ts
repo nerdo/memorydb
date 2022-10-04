@@ -16,10 +16,31 @@ export type StoredModel<T extends {}> = Identifiable & T
 export type StoredModelUpdate<T extends {}> = Identifiable & Partial<T>
 
 export interface FindFunctionContext<Model, Extra extends object> {
+  /**
+    * The results of the find operation so far.
+    */
   readonly results: Model[]
+
+  /**
+    * The current index in the collection of models.
+    */
   index: number
+
+  /**
+    * The total number of models in the collection.
+    */
   count: number
+
+  /**
+    * The options influencing the behavior of the current find operation.
+    */
   readonly options?: FindFunctionOptions<Extra>
+
+  /**
+    * Extra (custom) context available in the find operation.
+    *
+    * @see {@link FindFunctionOptions<Extra>['extra']} for details.
+    */
   extra: Extra
 }
 
