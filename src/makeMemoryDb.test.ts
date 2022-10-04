@@ -392,28 +392,35 @@ describe('makeMemoryDB()', () => {
             { $id: '19', name: 'Dwight', email: 'dwight@example.test' },
           ]
 
-          it('should be reversible', () => {
-            const contact = z.object({
-              name: z.string(),
-              email: z.string().email(),
-            })
+          const contact = z.object({
+            name: z.string(),
+            email: z.string().email(),
+          })
 
-            const db = makeMemoryDB({
-              schema: {
-                contact,
-              },
-              seeder(db) {
-                db.schema.contact.load(...contacts)
-              },
-            })
+          const db = makeMemoryDB({
+            schema: {
+              contact,
+            },
+            seeder(db) {
+              db.schema.contact.load(...contacts)
+            },
+          })
 
-            const matcher: Parameters<typeof db.schema.contact.find>[0] = (obj) => {
-              return !!obj.name?.match(/o/i)
-            }
-            const stopper: Parameters<typeof db.schema.contact.find>[1] = (context) => {
-              return context.results.length === 2
-            }
+          // Matches the first two contacts whose names have "o" in them.
+          const matcher: Parameters<typeof db.schema.contact.find>[0] = (obj) => {
+            return !!obj.name?.match(/o/i)
+          }
+          const stopper: Parameters<typeof db.schema.contact.find>[1] = (context) => {
+            return context.results.length === 2
+          }
 
+          it('should allow starting from a particular index', () => {
+            const r = db.schema.contact.find(matcher, stopper, { startingIndex: 2 })
+
+            expect(r).toEqual([contacts[12], contacts[14]])
+          })
+
+          it('should allow iterating in reverse', () => {
             const r = db.schema.contact.find(matcher, stopper, { reverse: true })
 
             expect(r).toEqual([contacts[17], contacts[15]])
