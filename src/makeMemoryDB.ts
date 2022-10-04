@@ -152,9 +152,11 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
         }
 
         const loop = (() => {
+          const clampStart = (value: number) => Math.max(0, Math.min(collection.array.length - 1, value))
+
           if (options?.reverse) {
             return {
-              start: Math.max(0, options?.startingIndex || collection.array.length - 1),
+              start: clampStart(options?.startingIndex || collection.array.length - 1),
               condition: () => context.index > 0,
               iterate: () => context.index--,
             }
