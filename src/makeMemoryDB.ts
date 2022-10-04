@@ -44,6 +44,13 @@ export interface Schema<T extends {}, I, Model = StoredModel<T>> {
   ) => Model[]
 
   count: () => number
+
+  debug: {
+    collection: {
+      cache: Record<IdType, Model>,
+      array: Model[],
+    }
+  }
 }
 
 export type SchemaList<Type> = {
@@ -154,6 +161,10 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
       },
 
       count: () => collection.array.length,
+
+      debug: {
+        collection
+      }
     }
 
     return { isValidSchema, name, schema, collection, zod }
