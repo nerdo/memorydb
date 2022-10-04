@@ -29,7 +29,6 @@ describe('makeMemoryDB()', () => {
           { name: 'Ada', email: 'ada@example.test' },
         ]
 
-        const addresses: DbModel<z.infer<typeof address>>[] = [{ $id: 'the-whitehouse', street: '1600 Pennsylvania Ave', city: 'Washington', state: 'DC' }]
         const addresses: StoredModel<z.infer<typeof address>>[] = [{ $id: 'the-whitehouse', street: '1600 Pennsylvania Ave', city: 'Washington', state: 'DC' }]
 
         const testDB = makeMemoryDB({
@@ -367,6 +366,38 @@ describe('makeMemoryDB()', () => {
           expect(r2).toEqual([contacts[14]])
           expect(r1).toEqual(r2)
           expect(r1[0]).not.toBe(r2[0])
+        })
+      })
+
+      describe('debug', () => {
+        it('should have properties on it for the purpose of debugging', () => {
+          const contact = z.object({
+            name: z.string(),
+            email: z.string().email(),
+          })
+
+          const contacts = [
+            { $id: '0', name: 'Jane', email: 'jane@example.test' },
+            { $id: '1', name: 'Bob', email: 'bob@example.test' },
+            { $id: '2', name: 'Mary', email: 'mary@example.test' },
+            { $id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { $id: '4', name: 'Rick', email: 'rick@example.test' },
+            { $id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { $id: '6', name: 'Cathy', email: 'cathy@example.test' },
+          ]
+
+          const db = makeMemoryDB({
+            schema: {
+              contact,
+            },
+            seeder(db) {
+              db.schema.contact.load(...contacts)
+            },
+          })
+
+          expect(db.schema.contact.debug).toBeDefined()
+          expect(db.schema.contact.debug.collection.cache).toBeDefined()
+          expect(db.schema.contact.debug.collection.array).toBeDefined()
         })
       })
     })
