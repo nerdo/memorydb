@@ -2,8 +2,20 @@ import { z } from 'zod'
 import { clone } from '@nerdo/utils'
 import { v4 as uuidv4 } from 'uuid'
 
+/**
+ * Settings governing the shape and initialization of the DB.
+ *
+ * @typeParam S - the shape of the schema
+ */
 export interface Settings<S extends Record<string, unknown>> {
+  /**
+   * The schema definitions.
+   */
   schema?: SchemaList<S>
+
+  /**
+   * A seeder callback function for the sake of priming the DB.
+   */
   seeder?: (db: ReturnType<typeof makeSchema<S>>) => void
 }
 
