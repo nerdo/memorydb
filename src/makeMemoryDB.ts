@@ -15,6 +15,21 @@ export type StoredModel<T extends {}> = Identifiable & T
 
 export type StoredModelUpdate<T extends {}> = Identifiable & Partial<T>
 
+/**
+ * Context for the find operation's matcher and stopper.
+ *
+ * @remarks
+ * The find operation loops through the collection of models,
+ * calling "matcher" and "stopper" callback functions in each iteration
+ * to know whether the model is a match that should be returned in the results,
+ * and to decide to whether or not to continue searching for matches.
+ *
+ * In order to support various unknown algorithms for performing this filter,
+ * this context object is provided to both functions to guide their logic.
+ *
+ * @typeParam Model - the shape of each model in the results.
+ * @typeParam Extra - the shape of the extra (custom) context object
+ */
 export interface FindFunctionContext<Model, Extra extends object> {
   /**
     * The results of the find operation so far.
