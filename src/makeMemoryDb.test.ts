@@ -367,6 +367,58 @@ describe('makeMemoryDB()', () => {
           expect(r1).toEqual(r2)
           expect(r1[0]).not.toBe(r2[0])
         })
+
+        describe('options', () => {
+          const contacts = [
+            { $id: '0', name: 'Jane', email: 'jane@example.test' },
+            { $id: '1', name: 'Bob', email: 'bob@example.test' },
+            { $id: '2', name: 'Mary', email: 'mary@example.test' },
+            { $id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { $id: '4', name: 'Rick', email: 'rick@example.test' },
+            { $id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { $id: '6', name: 'Cathy', email: 'cathy@example.test' },
+            { $id: '7', name: 'Miles', email: 'miles@example.test' },
+            { $id: '8', name: 'Larry', email: 'larry@example.test' },
+            { $id: '9', name: 'Stanley', email: 'stanley@example.test' },
+            { $id: '10', name: 'Melissa', email: 'melissa@example.test' },
+            { $id: '11', name: 'Mike', email: 'mike@example.test' },
+            { $id: '12', name: 'Shannon', email: 'shannon@example.test' },
+            { $id: '13', name: 'Dillan', email: 'dillan@example.test' },
+            { $id: '14', name: 'Victor', email: 'victor@example.test' },
+            { $id: '15', name: 'Nicole', email: 'nicole@example.test' },
+            { $id: '16', name: 'Stacy', email: 'stacy@example.test' },
+            { $id: '17', name: 'Gordon', email: 'gordon@example.test' },
+            { $id: '18', name: 'Henry', email: 'henry@example.test' },
+            { $id: '19', name: 'Dwight', email: 'dwight@example.test' },
+          ]
+
+          it('should be reversible', () => {
+            const contact = z.object({
+              name: z.string(),
+              email: z.string().email(),
+            })
+
+            const db = makeMemoryDB({
+              schema: {
+                contact,
+              },
+              seeder(db) {
+                db.schema.contact.load(...contacts)
+              },
+            })
+
+            const matcher: Parameters<typeof db.schema.contact.find>[0] = (obj) => {
+              return !!obj.name?.match(/o/i)
+            }
+            const stopper: Parameters<typeof db.schema.contact.find>[1] = (context) => {
+              return context.results.length === 2
+            }
+
+            const r = db.schema.contact.find(matcher, stopper, { reverse: true })
+
+            expect(r).toEqual([contacts[17], contacts[15]])
+          })
+        })
       })
 
       describe('debug', () => {
