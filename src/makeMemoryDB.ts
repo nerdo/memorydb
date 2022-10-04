@@ -47,8 +47,8 @@ export interface Schema<T extends {}, I, Model = StoredModel<T>> {
 
   debug: {
     collection: {
-      cache: Record<IdType, Model>,
-      array: Model[],
+      cache: Record<IdType, Model>
+      array: Model[]
     }
   }
 }
@@ -163,8 +163,8 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
       count: () => collection.array.length,
 
       debug: {
-        collection
-      }
+        collection,
+      },
     }
 
     return { isValidSchema, name, schema, collection, zod }
