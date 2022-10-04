@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { clone } from '@nerdo/utils'
-import crypto from 'crypto'
+import { v4 as uuidv4 } from 'uuid'
 
 export interface Settings<S extends Record<string, unknown>> {
   schema?: SchemaList<S>
@@ -47,7 +47,7 @@ export type SchemaList<Type> = {
   [P in keyof Type]: Type[P] extends z.AnyZodObject ? Type[P] : never
 }
 
-const newId = crypto.randomUUID
+const newId = uuidv4
 
 const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<Settings<S>, 'schema'>> & Settings<S>) => {
   type InferZodTypes<Type> = {
