@@ -44,9 +44,14 @@ export interface FindFunctionContext<Model, Extra extends object> {
   extra: Extra
 }
 
+/**
+  * Options influencing the behavior of the find operation.
+  *
+  * @typeParam Extra - the shape of the `extra` object used to initialize the find context.
+  */
 export interface FindFunctionOptions<Extra extends object> {
   /**
-    * Value used to initialize context.extra in the matcher and stopper callbacks.
+    * Object used to initialize context.extra in the matcher and stopper callbacks.
     *
     * @remarks
     * `extra` is an object that can be used to implement advanced find algorithms.
