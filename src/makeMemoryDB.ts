@@ -27,6 +27,11 @@ export interface FindFunctionOptions<Extra extends object> {
   // Value used to initialize context.extra in the matcher and stopper callbacks.
   extra?: Extra
   reverse?: boolean
+
+  /**
+    * The index to start the find operation from.
+    */
+  startingIndex?: number
 }
 
 export interface Schema<T extends {}, I, Model = StoredModel<T>> {
@@ -156,7 +161,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
           }
 
           return {
-            start: 0,
+            start: Math.max(0, Math.min(collection.array.length - 1, options?.startingIndex || 0)),
             condition: () => context.index < collection.array.length,
             iterate: () => context.index++,
           }
