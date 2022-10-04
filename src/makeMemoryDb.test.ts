@@ -420,10 +420,18 @@ describe('makeMemoryDB()', () => {
             expect(r).toEqual([contacts[12], contacts[14]])
           })
 
-          it('should allow iterating in reverse', () => {
-            const r = db.schema.contact.find(matcher, stopper, { reverse: true })
+          describe('reverse', () => {
+            it('should allow iterating in reverse', () => {
+              const r = db.schema.contact.find(matcher, stopper, { reverse: true })
 
-            expect(r).toEqual([contacts[17], contacts[15]])
+              expect(r).toEqual([contacts[17], contacts[15]])
+            })
+
+            it('should allow iterating in reverse and starting from a particular index', () => {
+              const r = db.schema.contact.find(matcher, stopper, { reverse: true, startingIndex: db.schema.contact.count() - 4 })
+
+              expect(r).toEqual([contacts[15], contacts[14]])
+            })
           })
         })
       })
