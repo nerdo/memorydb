@@ -32,55 +32,55 @@ export type StoredModelUpdate<T extends {}> = Identifiable & Partial<T>
  */
 export interface FindFunctionContext<Model, Extra extends object> {
   /**
-    * The results of the find operation so far.
-    */
+   * The results of the find operation so far.
+   */
   readonly results: Model[]
 
   /**
-    * The current index in the collection of models.
-    */
+   * The current index in the collection of models.
+   */
   index: number
 
   /**
-    * The total number of models in the collection.
-    */
+   * The total number of models in the collection.
+   */
   count: number
 
   /**
-    * The options influencing the behavior of the current find operation.
-    */
+   * The options influencing the behavior of the current find operation.
+   */
   readonly options?: FindFunctionOptions<Extra>
 
   /**
-    * Extra (custom) context available in the find operation.
-    *
-    * @see {@link FindFunctionOptions<Extra>['extra']} for details.
-    */
+   * Extra (custom) context available in the find operation.
+   *
+   * @see {@link FindFunctionOptions<Extra>['extra']} for details.
+   */
   extra: Extra
 }
 
 /**
-  * Options influencing the behavior of the find operation.
-  *
-  * @typeParam Extra - the shape of the `extra` object used to initialize the find context.
-  */
+ * Options influencing the behavior of the find operation.
+ *
+ * @typeParam Extra - the shape of the `extra` object used to initialize the find context.
+ */
 export interface FindFunctionOptions<Extra extends object> {
   /**
-    * Object used to initialize context.extra in the matcher and stopper callbacks.
-    *
-    * @remarks
-    * `extra` is an object that can be used to implement advanced find algorithms.
-    *
-    * For example, if you want to find every 3rd match, `extra` could have a property 
-    * keeping track of how many matches were found so far in the matcher function
-    * without affecting `context.results`.
-    */
+   * Object used to initialize context.extra in the matcher and stopper callbacks.
+   *
+   * @remarks
+   * `extra` is an object that can be used to implement advanced find algorithms.
+   *
+   * For example, if you want to find every 3rd match, `extra` could have a property
+   * keeping track of how many matches were found so far in the matcher function
+   * without affecting `context.results`.
+   */
   extra?: Extra
 
   /**
-    * Whether to search the collection in reverse.
-    * @defaultValue false
-    */
+   * Whether to search the collection in reverse.
+   * @defaultValue false
+   */
   reverse?: boolean
 
   /**
