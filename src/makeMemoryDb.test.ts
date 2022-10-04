@@ -420,6 +420,14 @@ describe('makeMemoryDB()', () => {
 
               expect(r).toEqual([contacts[12], contacts[14]])
             })
+
+            it('should start from the beginning when out of bounds', () => {
+              const r1 = db.schema.contact.find(matcher, stopper, { startingIndex: -1 })
+              const r2 = db.schema.contact.find(matcher, stopper, { startingIndex: 0 })
+
+              expect(r1).toEqual([contacts[1], contacts[12]])
+              expect(r1).toEqual(r2)
+            })
           })
 
           describe('reverse', () => {
@@ -435,6 +443,14 @@ describe('makeMemoryDB()', () => {
               const r = db.schema.contact.find(matcher, stopper, { reverse: true, startingIndex: db.schema.contact.count() - 4 })
 
               expect(r).toEqual([contacts[15], contacts[14]])
+            })
+
+            it('should start from the end when startingIndex is out of bounds', () => {
+              const r1 = db.schema.contact.find(matcher, stopper, { reverse: true, startingIndex: db.schema.contact.count() })
+              const r2 = db.schema.contact.find(matcher, stopper, { reverse: true })
+
+              expect(r1).toEqual([contacts[17], contacts[15]])
+              expect(r1).toEqual(r2)
             })
           })
         })
