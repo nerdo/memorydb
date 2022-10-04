@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { describe, it, expect } from 'vitest'
-import { DbModel, makeMemoryDB } from './makeMemoryDB'
+import { StoredModel, makeMemoryDB } from './makeMemoryDB'
 
 describe('makeMemoryDB()', () => {
   it('should return a memory db', () => {
@@ -30,6 +30,7 @@ describe('makeMemoryDB()', () => {
         ]
 
         const addresses: DbModel<z.infer<typeof address>>[] = [{ $id: 'the-whitehouse', street: '1600 Pennsylvania Ave', city: 'Washington', state: 'DC' }]
+        const addresses: StoredModel<z.infer<typeof address>>[] = [{ $id: 'the-whitehouse', street: '1600 Pennsylvania Ave', city: 'Washington', state: 'DC' }]
 
         const testDB = makeMemoryDB({
           schema: {

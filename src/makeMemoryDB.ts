@@ -9,7 +9,11 @@ export interface Settings<S extends Record<string, unknown>> {
 
 export type IdType = string
 
-export type DbModel<T extends {}, I = IdType> = { readonly $id: I } & Partial<T>
+export type Identifiable = { readonly $id: IdType }
+
+export type StoredModel<T extends {}> = Identifiable & T
+
+export type StoredModelUpdate<T extends {}> = Identifiable & Partial<T>
 
 export interface FindFunctionContext<Model, Extra extends object> {
   readonly results: Model[]
@@ -23,7 +27,7 @@ export interface FindFunctionOptions<Extra extends object> {
   extra: Extra
 }
 
-export interface Schema<T, I, ID = { readonly $id: I }, Model = ID & Partial<T>> {
+export interface Schema<T extends {}, I, Model = StoredModel<T>> {
   new: (p?: Partial<T>) => Model
   getAll: () => Model[]
   save: (...models: Model[]) => Model[]
