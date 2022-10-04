@@ -163,7 +163,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
           }
 
           return {
-            start: Math.max(0, Math.min(collection.array.length - 1, options?.startingIndex || 0)),
+            start: clampStart(options?.startingIndex || 0),
             condition: () => context.index < collection.array.length,
             iterate: () => context.index++,
           }
