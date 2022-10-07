@@ -2,8 +2,91 @@ import { z } from 'zod'
 import { clone } from '@nerdo/utils'
 import { v4 as uuidv4 } from 'uuid'
 
-type InputSchemaDefinitions<Type> = {
-  [P in keyof Type]: Type[P] extends z.AnyZodObject ? Type[P] : never
+type Expand<T> = T extends T ? { [K in keyof T]: T[K] } : never
+// type Expand<T> = {} & { [P in keyof T]: T[P] }
+// type ExpandRecursively<T> = T extends T ? { [K in keyof T]: ExpandRecursively<T[K]> } : never
+
+export type IdTypes = string | number
+
+type ShapeDeclaration = z.AnyZodObject
+
+export const defaultIdSettings = {
+  name: 'id',
+  next: (_schemaName: string) => uuidv4(),
+  shape: z.object({ id: z.string() }),
+}
+
+export class Schema<Shape extends {}, V extends IdTypes, O extends ShapeDeclaration, N extends string> {
+  /**
+   * A property to [hopefully] make the Schema class uniquely identifiable.
+   *
+   * @remarks
+   * zod objects, for example, have a `shape` property, and since `id` is optional,
+   * something else is needed to uniquely identify this class.
+   */
+  $memorydb = true
+
+  /**
+   * The shape of the schema (currently the zod object).
+   */
+  shape: Shape
+
+  /**
+   * Settings for the identifier for this schema.
+   */
+  id: IdSetting<V, O, N>
+
+  /**
+   * Declare the schema verbosely.
+   *
+   * @remarks
+   * Use this to define custom settings for the schema's identifier.
+   */
+  constructor(declaration: ExtendedSchemaDeclaration<Shape, V, O, N>) {
+    this.shape = declaration.shape
+    this.id = declaration.id
+  }
+
+  /**
+   * Declare the schema verbosely.
+   *
+   * @remarks
+   * Use this to define custom settings for the schema's identifier.
+   * This is an alias for the constructor.
+   */
+  static declare<T extends {}, V extends IdTypes, O extends ShapeDeclaration, N extends string>(declaration: ExtendedSchemaDeclaration<T, V, O, N>) {
+    return new Schema(declaration)
+  }
+}
+
+export type StoredModel<Identifiable extends {}, T extends {}> = Identifiable & T
+
+export type StoredModelUpdate<Identifiable extends {}, T extends {}> = Identifiable & Partial<T>
+
+export interface RequiredSchemaDeclaration<
+  SchemaDeclaration extends {},
+  IdType extends IdTypes,
+  IdShapeDeclaration extends ShapeDeclaration,
+  N extends string
+> {
+  shape: SchemaDeclaration
+  id: Required<IdSetting<IdType, IdShapeDeclaration, N>>
+}
+
+export interface ExtendedSchemaDeclaration<
+  SchemaDeclaration extends {},
+  IdType extends IdTypes,
+  IdShapeDeclaration extends ShapeDeclaration,
+  N extends string
+> {
+  shape: SchemaDeclaration
+  id: IdSetting<IdType, IdShapeDeclaration, N>
+}
+
+export type IdSetting<T extends IdTypes, S extends ShapeDeclaration, N extends string> = {
+  name: string
+  next: (schemaName: N) => T
+  shape: S
 }
 
 /**
@@ -13,23 +96,15 @@ type InputSchemaDefinitions<Type> = {
  */
 export interface Settings<S extends Record<string, unknown>> {
   /**
-   * The schema definitions.
+   * The schema declarations.
    */
-  schema?: InputSchemaDefinitions<S>
+  schema?: S
 
   /**
    * A seeder callback function for the sake of priming the DB.
    */
   seeder?: (db: ReturnType<typeof makeSchema<S>>) => void
 }
-
-export type IdType = string
-
-export type Identifiable = { readonly $id: IdType }
-
-export type StoredModel<T extends {}> = Identifiable & T
-
-export type StoredModelUpdate<T extends {}> = Identifiable & Partial<T>
 
 /**
  * Context for the find operation's matcher and stopper.
@@ -109,10 +184,11 @@ export interface FindFunctionOptions<Extra extends {}> {
  * The schema API for an entity.
  *
  * @typeParam T - the shape of the entity.
- * @typeParam ID - the type of the `$id` field in stored models.
- * @typeParam Model - the model as it exists in the DB (with the `$id` field).
+ * @typeParam IdType - the type of the `id` field in stored models.
+ * @typeParam Model - the model as it exists in the DB (with the `id` field).
+ * @typeParam ModelUpdate - the partial model as it exists in the DB (with the `id` field).
  */
-export interface SchemaAPI<T extends {}, ID extends string | number | symbol, Model = StoredModel<T>> {
+export interface SchemaAPI<T extends {}, IdType extends IdTypes, Model extends {}, ModelUpdate extends {}> {
   /**
    * Creates a new Model with an ID that can be persisted back to the DB.
    *
@@ -120,14 +196,14 @@ export interface SchemaAPI<T extends {}, ID extends string | number | symbol, Mo
    *
    * @returns The newly-primed model.
    */
-  new: (p?: Partial<T>) => StoredModelUpdate<T>
+  new: (p?: Expand<Partial<T>>) => Expand<ModelUpdate>
 
   /**
    * Gets all models from the DB.
    *
    * @returns An array of all models in the collection.
    */
-  getAll: () => Model[]
+  getAll: () => Expand<Model>[]
 
   /**
    * Saves models to the DB.
@@ -136,7 +212,7 @@ export interface SchemaAPI<T extends {}, ID extends string | number | symbol, Mo
    *
    * @returns An array of models that were saved.
    */
-  save: (...models: Model[]) => Model[]
+  save: (...models: Expand<Model>[]) => Expand<Model>[]
 
   /**
    * Alias for {@link save}.
@@ -150,7 +226,7 @@ export interface SchemaAPI<T extends {}, ID extends string | number | symbol, Mo
    *
    * @returns An array of models that were loaded into the DB.
    */
-  load: (...models: Model[]) => Model[]
+  load: (...models: Expand<Model>[]) => Expand<Model>[]
 
   /**
    * Creates and persists models to the DB.
@@ -163,23 +239,23 @@ export interface SchemaAPI<T extends {}, ID extends string | number | symbol, Mo
    *
    * @returns An array of models that were created.
    */
-  create: (...partials: Partial<T>[]) => Model[]
+  create: (...partials: Expand<Partial<T>>[]) => Expand<Model>[]
 
   /**
-   * Finds models by `$id`.
+   * Finds models by `id`.
    *
    * @remarks
-   * Under the hood, this is implemented with a lookup by `$id`.
+   * Under the hood, this is implemented with a lookup by `id`.
    * It is more performant than the general-purpose {@link find} function.
    *
-   * Note: Any `$id`s that were not found in the collection will not be represented in the results.
-   * In other words, the results count <= the `$ids` count.
+   * Note: Any `id`s that were not found in the collection will not be represented in the results.
+   * In other words, the results count <= the `ids` count.
    *
-   * @param $ids - Model IDs to find.
+   * @param ids - Model IDs to find.
    *
-   * @returns An array of models that match the `$id`s, in the order that the `$id`s were given.
+   * @returns An array of models that match the `id`s, in the order that the `id`s were given.
    */
-  findById: (...$ids: ID[]) => Model[]
+  findById: (...ids: IdType[]) => Expand<Model>[]
 
   /**
    * Finds models in the collection.
@@ -194,10 +270,10 @@ export interface SchemaAPI<T extends {}, ID extends string | number | symbol, Mo
    * @returns An array of models for which the `matcher` function returned true.
    */
   find: <Extra extends object>(
-    matcher: (m: Model, context: FindFunctionContext<Model, Extra>) => boolean,
-    stopper: (context: FindFunctionContext<Model, Extra>) => boolean,
+    matcher: (m: Expand<Model>, context: FindFunctionContext<Expand<Model>, Extra>) => boolean,
+    stopper: (context: FindFunctionContext<Expand<Model>, Extra>) => boolean,
     options?: FindFunctionOptions<Extra>
-  ) => Model[]
+  ) => Expand<Model>[]
 
   /**
    * @returns The number of models in the collection.
@@ -213,158 +289,163 @@ export interface SchemaAPI<T extends {}, ID extends string | number | symbol, Mo
    */
   debug: {
     collection: {
-      cache: Record<ID, Model>
-      array: Model[]
+      cache: Record<IdType, Expand<Model>>
+      array: Expand<Model>[]
     }
   }
 }
 
-const newId = uuidv4
-
-const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<Settings<S>, 'schema'>> & Settings<S>) => {
+const makeSchema = <S extends {}>(settings: Required<Pick<Settings<S>, 'schema'>> & Settings<S>) => {
   const SchemaBaseClass = z.ZodObject
-
-  type AnySchemaDefinition = z.AnyZodObject
 
   type Infer<T> = T extends z.ZodType<any, any, any> ? z.infer<T> : never
 
-  type InferredShapes<Type> = {
-    [P in keyof Type as Type[P] extends AnySchemaDefinition ? P : never]: Type[P] extends AnySchemaDefinition ? Infer<Type[P]> : never
+  type GetDeclared<T> = T extends Schema<infer MS, infer IT, infer IS, any>
+    ? {
+        modelShape: MS
+        idType: IT
+        idShape: IS
+      }
+    : { modelShape: T extends {} ? T : {}; idType: ReturnType<typeof defaultIdSettings.next>; idShape: typeof defaultIdSettings.shape }
+
+  type ResultSchemaAPIs<T extends {}> = {
+    [K in keyof T]: GetDeclared<T[K]> extends { modelShape: infer MS extends {}; idType: infer IT extends IdTypes; idShape: infer IS extends {} }
+      ? SchemaAPI<Infer<MS>, IT, StoredModel<Infer<IS>, Infer<MS>>, StoredModelUpdate<Infer<IS>, Infer<MS>>>
+      : never
   }
 
-  type SchemaShapes = InferredShapes<typeof settings.schema>
+  const r = Object.entries(settings.schema).reduce(
+    (result, [name, schemaOrShape]) => {
+      type Declared = GetDeclared<typeof schemaOrShape>
 
-  // Might want to make this configurable...
-  type SchemaIdType = IdType
+      const schema =
+        schemaOrShape instanceof Schema
+          ? schemaOrShape
+          : Schema.declare({
+              shape: schemaOrShape as Declared['modelShape'],
+              id: defaultIdSettings,
+            })
 
-  type SchemaAPIs<Type> = {
-    // Filters out any values that aren't a proper schema shape.
-    [P in keyof Type as Type[P] extends never ? never : P]: P extends keyof SchemaShapes ? SchemaAPI<SchemaShapes[P], SchemaIdType> : never
-  }
+      if (!(schema.shape instanceof SchemaBaseClass)) return result
 
-  type SchemaDefinitions<Type> = {
-    // Filters out any values that aren't a proper schema shape.
-    [P in keyof Type as Type[P] extends never ? never : P]: P extends keyof SchemaShapes ? SchemaShapes[P] : never
-  }
+      type ModelShape = Infer<typeof schema.shape>
+      type IdShape = Readonly<Infer<typeof schema.id.shape>>
+      type Model = StoredModel<IdShape, ModelShape>
+      type ModelUpdate = StoredModelUpdate<IdShape, ModelShape>
+      type IdType = ReturnType<typeof schema.id.next>
 
-  const apiParts = Object.keys(settings.schema).map((name) => {
-    const definition = settings.schema[name]
+      const collection: { cache: Record<IdType, Model>; array: Model[] } = { cache: {}, array: [] }
 
-    type InferredType = Infer<typeof definition>
-    type Model = { readonly $id: SchemaIdType } & InferredType
-    type Collection = { cache: Record<SchemaIdType, Model>; array: Model[] }
+      const save: SchemaAPI<ModelShape, IdType, Model, ModelUpdate>['save'] = (...models) => {
+        return models.map((m: Model) => {
+          const key = m[schema.id.name as keyof typeof m]
 
-    const isValidSchema = definition instanceof SchemaBaseClass
+          const isNew = !(key in collection.cache)
 
-    const collection: Collection = { cache: {}, array: [] }
+          collection.cache[key] = clone(m)
 
-    const save: SchemaAPI<InferredType, SchemaIdType>['save'] = (...models) => {
-      return models.map((m) => {
-        const isNew = !(m.$id in collection.cache)
-
-        collection.cache[m.$id] = clone(m)
-
-        if (isNew) {
-          collection.array.push(collection.cache[m.$id])
-        }
-
-        return clone(collection.cache[m.$id])
-      })
-    }
-
-    const schema: SchemaAPI<InferredType, SchemaIdType> = {
-      new: (p?) => {
-        return { ...(p || {}), $id: newId() } as StoredModelUpdate<InferredType>
-      },
-
-      getAll: () => {
-        return clone(collection.array)
-      },
-
-      save,
-
-      load: save,
-
-      create: (...partials) => {
-        return schema.save(...partials.map((p) => schema.new(p) as StoredModel<InferredType>))
-      },
-
-      findById: (...$ids) => {
-        return $ids.reduce((results: Model[], $id) => {
-          const obj = collection.cache[$id]
-
-          if (obj) {
-            results.push(clone(obj))
+          if (isNew) {
+            collection.array.push(collection.cache[key])
           }
 
-          return results
-        }, [])
-      },
+          return clone(collection.cache[key])
+        })
+      }
 
-      // find: <Extra>(matcher, stopper, options) => {
-      find: (matcher, stopper, options) => {
-        type Context = Parameters<typeof matcher>[1]
+      const api: SchemaAPI<ModelShape, IdType, Model, ModelUpdate> = {
+        new: (p?) => {
+          return { ...(p || {}), [schema.id.name]: schema.id.next(name) } as ModelUpdate
+        },
 
-        const context: Context = {
-          results: [],
-          options,
-          index: 0,
-          count: collection.array.length,
-          extra: options?.extra ? clone(options?.extra || {}) : ({} as Context['extra']),
-        }
+        getAll: () => {
+          return clone(collection.array)
+        },
 
-        const loop = (() => {
-          const clampStart = (value: number) => Math.max(0, Math.min(collection.array.length - 1, value))
+        save,
 
-          if (options?.reverse) {
+        load: save,
+
+        create: (...partials) => {
+          // TODO use zod to ensure that all required data is here for saving instead of coercing to Model via unknown
+          return api.save(...partials.map((p) => api.new(p) as unknown as Model))
+        },
+
+        findById: (...ids) => {
+          return ids.reduce((results: Model[], id) => {
+            const obj = collection.cache[id]
+
+            if (obj) {
+              results.push(clone(obj))
+            }
+
+            return results
+          }, [])
+        },
+
+        find: (matcher, stopper, options) => {
+          type Context = Parameters<typeof matcher>[1]
+
+          const context: Context = {
+            results: [],
+            options,
+            index: 0,
+            count: collection.array.length,
+            extra: options?.extra ? clone(options?.extra || {}) : ({} as Context['extra']),
+          }
+
+          const loop = (() => {
+            const clampStart = (value: number) => Math.max(0, Math.min(collection.array.length - 1, value))
+
+            if (options?.reverse) {
+              return {
+                start: clampStart(options?.startingIndex || collection.array.length - 1),
+                condition: () => context.index > 0,
+                iterate: () => context.index--,
+              }
+            }
+
             return {
-              start: clampStart(options?.startingIndex || collection.array.length - 1),
-              condition: () => context.index > 0,
-              iterate: () => context.index--,
+              start: clampStart(options?.startingIndex || 0),
+              condition: () => context.index < collection.array.length,
+              iterate: () => context.index++,
+            }
+          })()
+
+          for (context.index = loop.start; loop.condition(); loop.iterate()) {
+            const m = collection.array[context.index]
+
+            if (matcher(m, context)) {
+              context.results.push(clone(m))
+            }
+
+            if (stopper(context)) {
+              break
             }
           }
 
-          return {
-            start: clampStart(options?.startingIndex || 0),
-            condition: () => context.index < collection.array.length,
-            iterate: () => context.index++,
-          }
-        })()
+          return context.results
+        },
 
-        for (context.index = loop.start; loop.condition(); loop.iterate()) {
-          const m = collection.array[context.index]
+        count: () => collection.array.length,
 
-          if (matcher(m, context)) {
-            context.results.push(clone(m))
-          }
+        debug: {
+          collection,
+        },
+      }
 
-          if (stopper(context)) {
-            break
-          }
-        }
+      // @ts-ignore-next
+      result.schema[name] = api
 
-        return context.results
-      },
+      // @ts-ignore-next
+      result.zod[name] = schema.shape
 
-      count: () => collection.array.length,
-
-      debug: {
-        collection,
-      },
-    }
-
-    return { isValidSchema, name, schema, collection, zod: definition }
-  })
-
-  return apiParts.reduce(
-    (container: { schema: SchemaAPIs<SchemaShapes>; zod: SchemaDefinitions<SchemaShapes> }, current) => {
-      if (!current.isValidSchema) return container
-      container.schema[current.name as keyof typeof container.schema] = current.schema as typeof container.schema[keyof typeof container.schema]
-      container.zod[current.name as keyof typeof container.zod] = current.zod as typeof container.zod[keyof typeof container.zod]
-      return container
+      return result
     },
-    { schema: {} as SchemaAPIs<SchemaShapes>, zod: {} as SchemaDefinitions<SchemaShapes> }
+
+    { schema: {} as ResultSchemaAPIs<typeof settings.schema>, zod: {} as typeof settings.schema }
   )
+
+  return r
 }
 
 /**

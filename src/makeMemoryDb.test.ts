@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { describe, it, expect } from 'vitest'
-import { StoredModel, makeMemoryDB } from './makeMemoryDB'
+import { StoredModel, makeMemoryDB, Schema, defaultIdSettings } from './makeMemoryDB'
 
 describe('makeMemoryDB()', () => {
   it('should return a memory db', () => {
@@ -29,7 +29,9 @@ describe('makeMemoryDB()', () => {
           { name: 'Ada', email: 'ada@example.test' },
         ]
 
-        const addresses: StoredModel<z.infer<typeof address>>[] = [{ $id: 'the-whitehouse', street: '1600 Pennsylvania Ave', city: 'Washington', state: 'DC' }]
+        const addresses: StoredModel<z.infer<typeof defaultIdSettings.shape>, z.infer<typeof address>>[] = [
+          { id: 'the-whitehouse', street: '1600 Pennsylvania Ave', city: 'Washington', state: 'DC' },
+        ]
 
         const testDB = makeMemoryDB({
           schema: {
@@ -37,7 +39,7 @@ describe('makeMemoryDB()', () => {
             address,
           },
           seeder: (db) => {
-            // Use create for models that don't have $id (creating new models)
+            // Use create for models that don't have id (creating new models)
             db.schema.contact.create(...contacts)
 
             // Use save for restoring persisted models (e.g. restoring from a memoryDB dump)
@@ -58,6 +60,51 @@ describe('makeMemoryDB()', () => {
         expect(a).toHaveLength(addresses.length)
         expect(a).toEqual(addresses)
         expect(a).not.toBe(addresses)
+      })
+    })
+
+    describe('id', () => {
+      it('should be configurable per-schema', () => {
+        const contact = z.object({
+          name: z.string(),
+          email: z.string().email(),
+        })
+        const address = z.object({
+          street: z.string(),
+          city: z.string(),
+          state: z.string(),
+        })
+        const todos = z.object({
+          label: z.string(),
+          completed: z.boolean(),
+        })
+
+        let nextId = 1
+
+        const db = makeMemoryDB({
+          schema: {
+            contact,
+            address,
+            todos: Schema.declare({
+              shape: todos,
+              id: {
+                shape: z.object({
+                  CustomTodoID: z.number(),
+                }),
+                name: 'CustomTodoID',
+                next: () => nextId++,
+              },
+            }),
+          },
+        })
+
+        const a = db.schema.address.new()
+        const b = db.schema.contact.new()
+        const c = db.schema.todos.new()
+
+        expect(typeof a.id).toBe('string')
+        expect(typeof b.id).toBe('string')
+        expect(typeof c.CustomTodoID).toBe('number')
       })
     })
   })
@@ -169,14 +216,14 @@ describe('makeMemoryDB()', () => {
           const c = db.schema.contact.new()
 
           expect(c).toBeDefined()
-          expect(c.$id).toBeDefined()
+          expect(c.id).toBeDefined()
           expect(c.name).toBeUndefined()
           expect(c.email).toBeUndefined()
 
           const a = db.schema.address.new({ street: '123 main st' })
 
           expect(a).toBeDefined()
-          expect(a.$id).toBeDefined()
+          expect(a.id).toBeDefined()
           expect(a.street).toBe('123 main st')
           expect(a.city).toBeUndefined()
           expect(a.state).toBeUndefined()
@@ -216,8 +263,8 @@ describe('makeMemoryDB()', () => {
           })
 
           const c = [
-            { $id: 'test1', name: 'Jane', email: 'jane@example.test' },
-            { $id: 'test2', name: 'Bob', email: 'bob@example.test' },
+            { id: 'test1', name: 'Jane', email: 'jane@example.test' },
+            { id: 'test2', name: 'Bob', email: 'bob@example.test' },
           ]
 
           db.schema.contact.save(...c)
@@ -257,30 +304,30 @@ describe('makeMemoryDB()', () => {
 
           expect(c).toBeDefined()
           expect(c).not.toBe(s)
-          expect(c[0].$id).toBeDefined()
+          expect(c[0].id).toBeDefined()
           expect(c[0].name).toEqual(s[0].name)
           expect(c[0].email).toEqual(s[0].email)
-          expect(c[1].$id).toBeDefined()
+          expect(c[1].id).toBeDefined()
           expect(c[1].name).toEqual(s[1].name)
           expect(c[1].email).toEqual(s[1].email)
         })
       })
 
       describe('findById()', () => {
-        it('should find and return a list of objects by $id', () => {
+        it('should find and return a list of objects by id', () => {
           const contact = z.object({
             name: z.string(),
             email: z.string().email(),
           })
 
           const contacts = [
-            { $id: '0', name: 'Jane', email: 'jane@example.test' },
-            { $id: '1', name: 'Bob', email: 'bob@example.test' },
-            { $id: '2', name: 'Mary', email: 'mary@example.test' },
-            { $id: '3', name: 'Rusty', email: 'rusty@example.test' },
-            { $id: '4', name: 'Rick', email: 'rick@example.test' },
-            { $id: '5', name: 'Michelle', email: 'michelle@example.test' },
-            { $id: '6', name: 'Cathy', email: 'cathy@example.test' },
+            { id: '0', name: 'Jane', email: 'jane@example.test' },
+            { id: '1', name: 'Bob', email: 'bob@example.test' },
+            { id: '2', name: 'Mary', email: 'mary@example.test' },
+            { id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { id: '4', name: 'Rick', email: 'rick@example.test' },
+            { id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { id: '6', name: 'Cathy', email: 'cathy@example.test' },
           ]
 
           const db = makeMemoryDB({
@@ -311,26 +358,26 @@ describe('makeMemoryDB()', () => {
           })
 
           const contacts = [
-            { $id: '0', name: 'Jane', email: 'jane@example.test' },
-            { $id: '1', name: 'Bob', email: 'bob@example.test' },
-            { $id: '2', name: 'Mary', email: 'mary@example.test' },
-            { $id: '3', name: 'Rusty', email: 'rusty@example.test' },
-            { $id: '4', name: 'Rick', email: 'rick@example.test' },
-            { $id: '5', name: 'Michelle', email: 'michelle@example.test' },
-            { $id: '6', name: 'Cathy', email: 'cathy@example.test' },
-            { $id: '7', name: 'Miles', email: 'miles@example.test' },
-            { $id: '8', name: 'Larry', email: 'larry@example.test' },
-            { $id: '9', name: 'Stanley', email: 'stanley@example.test' },
-            { $id: '10', name: 'Melissa', email: 'melissa@example.test' },
-            { $id: '11', name: 'Mike', email: 'mike@example.test' },
-            { $id: '12', name: 'Shannon', email: 'shannon@example.test' },
-            { $id: '13', name: 'Dillan', email: 'dillan@example.test' },
-            { $id: '14', name: 'Victor', email: 'victor@example.test' },
-            { $id: '15', name: 'Nicole', email: 'nicole@example.test' },
-            { $id: '16', name: 'Stacy', email: 'stacy@example.test' },
-            { $id: '17', name: 'Gordon', email: 'gordon@example.test' },
-            { $id: '18', name: 'Henry', email: 'henry@example.test' },
-            { $id: '19', name: 'Dwight', email: 'dwight@example.test' },
+            { id: '0', name: 'Jane', email: 'jane@example.test' },
+            { id: '1', name: 'Bob', email: 'bob@example.test' },
+            { id: '2', name: 'Mary', email: 'mary@example.test' },
+            { id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { id: '4', name: 'Rick', email: 'rick@example.test' },
+            { id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { id: '6', name: 'Cathy', email: 'cathy@example.test' },
+            { id: '7', name: 'Miles', email: 'miles@example.test' },
+            { id: '8', name: 'Larry', email: 'larry@example.test' },
+            { id: '9', name: 'Stanley', email: 'stanley@example.test' },
+            { id: '10', name: 'Melissa', email: 'melissa@example.test' },
+            { id: '11', name: 'Mike', email: 'mike@example.test' },
+            { id: '12', name: 'Shannon', email: 'shannon@example.test' },
+            { id: '13', name: 'Dillan', email: 'dillan@example.test' },
+            { id: '14', name: 'Victor', email: 'victor@example.test' },
+            { id: '15', name: 'Nicole', email: 'nicole@example.test' },
+            { id: '16', name: 'Stacy', email: 'stacy@example.test' },
+            { id: '17', name: 'Gordon', email: 'gordon@example.test' },
+            { id: '18', name: 'Henry', email: 'henry@example.test' },
+            { id: '19', name: 'Dwight', email: 'dwight@example.test' },
           ]
 
           const db = makeMemoryDB({
@@ -370,26 +417,26 @@ describe('makeMemoryDB()', () => {
 
         describe('options', () => {
           const contacts = [
-            { $id: '0', name: 'Jane', email: 'jane@example.test' },
-            { $id: '1', name: 'Bob', email: 'bob@example.test' },
-            { $id: '2', name: 'Mary', email: 'mary@example.test' },
-            { $id: '3', name: 'Rusty', email: 'rusty@example.test' },
-            { $id: '4', name: 'Rick', email: 'rick@example.test' },
-            { $id: '5', name: 'Michelle', email: 'michelle@example.test' },
-            { $id: '6', name: 'Cathy', email: 'cathy@example.test' },
-            { $id: '7', name: 'Miles', email: 'miles@example.test' },
-            { $id: '8', name: 'Larry', email: 'larry@example.test' },
-            { $id: '9', name: 'Stanley', email: 'stanley@example.test' },
-            { $id: '10', name: 'Melissa', email: 'melissa@example.test' },
-            { $id: '11', name: 'Mike', email: 'mike@example.test' },
-            { $id: '12', name: 'Shannon', email: 'shannon@example.test' },
-            { $id: '13', name: 'Dillan', email: 'dillan@example.test' },
-            { $id: '14', name: 'Victor', email: 'victor@example.test' },
-            { $id: '15', name: 'Nicole', email: 'nicole@example.test' },
-            { $id: '16', name: 'Stacy', email: 'stacy@example.test' },
-            { $id: '17', name: 'Gordon', email: 'gordon@example.test' },
-            { $id: '18', name: 'Henry', email: 'henry@example.test' },
-            { $id: '19', name: 'Dwight', email: 'dwight@example.test' },
+            { id: '0', name: 'Jane', email: 'jane@example.test' },
+            { id: '1', name: 'Bob', email: 'bob@example.test' },
+            { id: '2', name: 'Mary', email: 'mary@example.test' },
+            { id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { id: '4', name: 'Rick', email: 'rick@example.test' },
+            { id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { id: '6', name: 'Cathy', email: 'cathy@example.test' },
+            { id: '7', name: 'Miles', email: 'miles@example.test' },
+            { id: '8', name: 'Larry', email: 'larry@example.test' },
+            { id: '9', name: 'Stanley', email: 'stanley@example.test' },
+            { id: '10', name: 'Melissa', email: 'melissa@example.test' },
+            { id: '11', name: 'Mike', email: 'mike@example.test' },
+            { id: '12', name: 'Shannon', email: 'shannon@example.test' },
+            { id: '13', name: 'Dillan', email: 'dillan@example.test' },
+            { id: '14', name: 'Victor', email: 'victor@example.test' },
+            { id: '15', name: 'Nicole', email: 'nicole@example.test' },
+            { id: '16', name: 'Stacy', email: 'stacy@example.test' },
+            { id: '17', name: 'Gordon', email: 'gordon@example.test' },
+            { id: '18', name: 'Henry', email: 'henry@example.test' },
+            { id: '19', name: 'Dwight', email: 'dwight@example.test' },
           ]
 
           const contact = z.object({
@@ -464,13 +511,13 @@ describe('makeMemoryDB()', () => {
           })
 
           const contacts = [
-            { $id: '0', name: 'Jane', email: 'jane@example.test' },
-            { $id: '1', name: 'Bob', email: 'bob@example.test' },
-            { $id: '2', name: 'Mary', email: 'mary@example.test' },
-            { $id: '3', name: 'Rusty', email: 'rusty@example.test' },
-            { $id: '4', name: 'Rick', email: 'rick@example.test' },
-            { $id: '5', name: 'Michelle', email: 'michelle@example.test' },
-            { $id: '6', name: 'Cathy', email: 'cathy@example.test' },
+            { id: '0', name: 'Jane', email: 'jane@example.test' },
+            { id: '1', name: 'Bob', email: 'bob@example.test' },
+            { id: '2', name: 'Mary', email: 'mary@example.test' },
+            { id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { id: '4', name: 'Rick', email: 'rick@example.test' },
+            { id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { id: '6', name: 'Cathy', email: 'cathy@example.test' },
           ]
 
           const db = makeMemoryDB({
