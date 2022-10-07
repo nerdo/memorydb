@@ -2,6 +2,10 @@ import { z } from 'zod'
 import { clone } from '@nerdo/utils'
 import { v4 as uuidv4 } from 'uuid'
 
+type InputSchemaDefinitions<Type> = {
+  [P in keyof Type]: Type[P] extends z.AnyZodObject ? Type[P] : never
+}
+
 /**
  * Settings governing the shape and initialization of the DB.
  *
@@ -11,7 +15,7 @@ export interface Settings<S extends Record<string, unknown>> {
   /**
    * The schema definitions.
    */
-  schema?: SchemaList<S>
+  schema?: InputSchemaDefinitions<S>
 
   /**
    * A seeder callback function for the sake of priming the DB.
@@ -39,14 +43,14 @@ export type StoredModelUpdate<T extends {}> = Identifiable & Partial<T>
  * In order to support various unknown algorithms for performing this filter,
  * this context object is provided to both functions to guide their logic.
  *
- * @typeParam Model - the shape of each model in the results.
+ * @typeParam Result - the shape of each result.
  * @typeParam Extra - the shape of the extra (custom) context object
  */
-export interface FindFunctionContext<Model, Extra extends object> {
+export interface FindFunctionContext<Result, Extra extends {}> {
   /**
    * The results of the find operation so far.
    */
-  readonly results: Model[]
+  readonly results: Result[]
 
   /**
    * The current index in the collection of models.
@@ -76,7 +80,7 @@ export interface FindFunctionContext<Model, Extra extends object> {
  *
  * @typeParam Extra - the shape of the `extra` object used to initialize the find context.
  */
-export interface FindFunctionOptions<Extra extends object> {
+export interface FindFunctionOptions<Extra extends {}> {
   /**
    * Object used to initialize context.extra in the matcher and stopper callbacks.
    *
@@ -104,11 +108,11 @@ export interface FindFunctionOptions<Extra extends object> {
 /**
  * The schema API for an entity.
  *
- * @typeParam T - the shape of the entity
- * @typeParam I - the type of the `$id` field in stored models
- * @typeParam Model - the model as it exists in the DB (with the `$id` field)
+ * @typeParam T - the shape of the entity.
+ * @typeParam ID - the type of the `$id` field in stored models.
+ * @typeParam Model - the model as it exists in the DB (with the `$id` field).
  */
-export interface Schema<T extends {}, I, Model = StoredModel<T>> {
+export interface SchemaAPI<T extends {}, ID extends string | number | symbol, Model = StoredModel<T>> {
   /**
    * Creates a new Model with an ID that can be persisted back to the DB.
    *
@@ -116,7 +120,7 @@ export interface Schema<T extends {}, I, Model = StoredModel<T>> {
    *
    * @returns The newly-primed model.
    */
-  new: (p?: Partial<T>) => Model
+  new: (p?: Partial<T>) => StoredModelUpdate<T>
 
   /**
    * Gets all models from the DB.
@@ -175,9 +179,8 @@ export interface Schema<T extends {}, I, Model = StoredModel<T>> {
    *
    * @returns An array of models that match the `$id`s, in the order that the `$id`s were given.
    */
-  findById: (...$ids: I[]) => Model[]
+  findById: (...$ids: ID[]) => Model[]
 
-  // TODO find should deal with the Model in the DB, i.e. the Zod model... maybe - might depend on whether or not we validate with Zod
   /**
    * Finds models in the collection.
    *
@@ -210,50 +213,52 @@ export interface Schema<T extends {}, I, Model = StoredModel<T>> {
    */
   debug: {
     collection: {
-      cache: Record<IdType, Model>
+      cache: Record<ID, Model>
       array: Model[]
     }
   }
 }
 
-export type SchemaList<Type> = {
-  [P in keyof Type]: Type[P] extends z.AnyZodObject ? Type[P] : never
-}
-
 const newId = uuidv4
 
 const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<Settings<S>, 'schema'>> & Settings<S>) => {
-  type InferZodTypes<Type> = {
-    [P in keyof Type as Type[P] extends z.AnyZodObject ? P : never]: Type[P] extends z.AnyZodObject ? z.infer<Type[P]> : never
+  const SchemaBaseClass = z.ZodObject
+
+  type AnySchemaDefinition = z.AnyZodObject
+
+  type Infer<T> = T extends z.ZodType<any, any, any> ? z.infer<T> : never
+
+  type InferredShapes<Type> = {
+    [P in keyof Type as Type[P] extends AnySchemaDefinition ? P : never]: Type[P] extends AnySchemaDefinition ? Infer<Type[P]> : never
   }
 
-  type ZodTypes = InferZodTypes<typeof settings.schema>
+  type SchemaShapes = InferredShapes<typeof settings.schema>
 
   // Might want to make this configurable...
   type SchemaIdType = IdType
 
-  // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
-  type SchemaMap<Type> = {
-    [P in keyof Type as Type[P] extends never ? never : P]: P extends keyof ZodTypes ? Schema<ZodTypes[P], SchemaIdType> : never
+  type SchemaAPIs<Type> = {
+    // Filters out any values that aren't a proper schema shape.
+    [P in keyof Type as Type[P] extends never ? never : P]: P extends keyof SchemaShapes ? SchemaAPI<SchemaShapes[P], SchemaIdType> : never
   }
 
-  // Filter out any of our non inferred zod keys (e.g. if someone tries to set a schema prop to a primitive like z.string()
-  type ZodMap<Type> = {
-    [P in keyof Type as Type[P] extends never ? never : P]: P extends keyof ZodTypes ? ZodTypes[P] : never
+  type SchemaDefinitions<Type> = {
+    // Filters out any values that aren't a proper schema shape.
+    [P in keyof Type as Type[P] extends never ? never : P]: P extends keyof SchemaShapes ? SchemaShapes[P] : never
   }
 
   const apiParts = Object.keys(settings.schema).map((name) => {
-    const zod = settings.schema[name]
+    const definition = settings.schema[name]
 
-    type Z = z.infer<typeof zod>
-    type Model = { readonly $id: SchemaIdType } & Z
+    type InferredType = Infer<typeof definition>
+    type Model = { readonly $id: SchemaIdType } & InferredType
     type Collection = { cache: Record<SchemaIdType, Model>; array: Model[] }
 
-    const isValidSchema = zod instanceof z.ZodObject
+    const isValidSchema = definition instanceof SchemaBaseClass
 
     const collection: Collection = { cache: {}, array: [] }
 
-    const save: Schema<Z, SchemaIdType>['save'] = (...models) => {
+    const save: SchemaAPI<InferredType, SchemaIdType>['save'] = (...models) => {
       return models.map((m) => {
         const isNew = !(m.$id in collection.cache)
 
@@ -267,9 +272,9 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
       })
     }
 
-    const schema: Schema<Z, SchemaIdType> = {
-      new: (p) => {
-        return { ...(p || {}), $id: newId() }
+    const schema: SchemaAPI<InferredType, SchemaIdType> = {
+      new: (p?) => {
+        return { ...(p || {}), $id: newId() } as StoredModelUpdate<InferredType>
       },
 
       getAll: () => {
@@ -281,7 +286,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
       load: save,
 
       create: (...partials) => {
-        return schema.save(...partials.map((p) => schema.new(p)))
+        return schema.save(...partials.map((p) => schema.new(p) as StoredModel<InferredType>))
       },
 
       findById: (...$ids) => {
@@ -348,17 +353,17 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
       },
     }
 
-    return { isValidSchema, name, schema, collection, zod }
+    return { isValidSchema, name, schema, collection, zod: definition }
   })
 
   return apiParts.reduce(
-    (container: { schema: SchemaMap<ZodTypes>; zod: ZodMap<ZodTypes> }, current) => {
+    (container: { schema: SchemaAPIs<SchemaShapes>; zod: SchemaDefinitions<SchemaShapes> }, current) => {
       if (!current.isValidSchema) return container
       container.schema[current.name as keyof typeof container.schema] = current.schema as typeof container.schema[keyof typeof container.schema]
       container.zod[current.name as keyof typeof container.zod] = current.zod as typeof container.zod[keyof typeof container.zod]
       return container
     },
-    { schema: {} as SchemaMap<ZodTypes>, zod: {} as ZodMap<ZodTypes> }
+    { schema: {} as SchemaAPIs<SchemaShapes>, zod: {} as SchemaDefinitions<SchemaShapes> }
   )
 }
 
@@ -370,7 +375,7 @@ const makeSchema = <S extends Record<string, unknown>>(settings: Required<Pick<S
  * @returns The memory DB.
  */
 export const makeMemoryDB = <S extends {}>(settings: Settings<S> = {}) => {
-  const { schema, zod } = makeSchema({ schema: {} as SchemaList<S>, ...settings })
+  const { schema, zod } = makeSchema({ schema: {} as never, ...settings })
 
   const db = {
     zod,
