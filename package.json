@@ -45,5 +45,8 @@
     "@nerdo/utils": "^2.0.2",
     "uuid": "^9.0.0"
   },
-  "prettier": "@nerdo/prettier-config"
+  "prettier": "@nerdo/prettier-config",
+  "publishConfig": {
+    "access": "public"
+  }
 }
