@@ -25,7 +25,8 @@
   "scripts": {
     "build": "microbundle --globals @nerdo/utils=nerdoUtils",
     "dev": "microbundle watch",
-    "test": "vitest"
+    "test": "vitest run",
+    "tdd": "vitest dev"
   },
   "devDependencies": {
     "@nerdo/prettier-config": "^1.0.1",
