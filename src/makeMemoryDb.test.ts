@@ -254,6 +254,7 @@ describe('makeMemoryDB()', () => {
           const contact = z.object({
             name: z.string(),
             email: z.string().email(),
+            timestamp: z.date(),
           })
 
           const db = makeMemoryDB({
@@ -263,8 +264,8 @@ describe('makeMemoryDB()', () => {
           })
 
           const c = [
-            { id: 'test1', name: 'Jane', email: 'jane@example.test' },
-            { id: 'test2', name: 'Bob', email: 'bob@example.test' },
+            { id: 'test1', name: 'Jane', email: 'jane@example.test', timestamp: new Date(1666229644651) },
+            { id: 'test2', name: 'Bob', email: 'bob@example.test', timestamp: new Date(16662225239) },
           ]
 
           db.schema.contact.save(...c)
