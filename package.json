@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@nerdo/prettier-config": "^1.0.1",
-    "@types/node": "^18.8.1",
+    "@types/node": "^18.11.2",
     "@types/uuid": "^8.3.4",
     "microbundle": "^0.15.1",
     "prettier": "^2.7.1",
@@ -42,7 +42,7 @@
     "zod": "^3.19.1"
   },
   "dependencies": {
-    "@nerdo/utils": "^2.0.2",
+    "@nerdo/utils": "^2.1.0",
     "uuid": "^9.0.0"
   },
   "prettier": "@nerdo/prettier-config",
