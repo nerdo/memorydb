@@ -289,7 +289,7 @@ export interface SchemaAPI<T extends {}, IdType extends IdTypes, Model extends {
    */
   debug: {
     collection: {
-      cache: Record<IdType, Expand<Model>>
+      cache: Map<IdType, Expand<Model>>
       array: Expand<Model>[]
     }
   }
@@ -334,7 +334,7 @@ const makeSchema = <S extends {}>(settings: Required<Pick<Settings<S>, 'schema'>
       type ModelUpdate = StoredModelUpdate<IdShape, ModelShape>
       type IdType = ReturnType<typeof schema.id.next>
 
-      const collection: { cache: Record<IdType, Model>; array: Model[] } = { cache: {}, array: [] }
+      const collection: { cache: Map<IdType, Model>; array: Model[] } = { cache: new Map(), array: [] }
 
       const save: SchemaAPI<ModelShape, IdType, Model, ModelUpdate>['save'] = (...models) => {
         return models.map((m: Model) => {
@@ -342,13 +342,13 @@ const makeSchema = <S extends {}>(settings: Required<Pick<Settings<S>, 'schema'>
 
           const isNew = !(key in collection.cache)
 
-          collection.cache[key] = clone(m)
+          collection.cache.set(key, clone(m))
 
           if (isNew) {
-            collection.array.push(collection.cache[key])
+            collection.array.push(collection.cache.get(key))
           }
 
-          return clone(collection.cache[key])
+          return clone(collection.cache.get(key))
         })
       }
 
@@ -372,7 +372,7 @@ const makeSchema = <S extends {}>(settings: Required<Pick<Settings<S>, 'schema'>
 
         findById: (...ids) => {
           return ids.reduce((results: Model[], id) => {
-            const obj = collection.cache[id]
+            const obj = collection.cache.get(id)
 
             if (obj) {
               results.push(clone(obj))
