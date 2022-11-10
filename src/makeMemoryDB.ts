@@ -276,6 +276,21 @@ export interface SchemaAPI<T extends {}, IdType extends IdTypes, Model extends {
   ) => Expand<Model>[]
 
   /**
+   * Deletes models by `id`.
+   *
+   * @remarks
+   * Under the hood, this is implemented with a lookup by `id`.
+   * It is more performant than the general-purpose {@link find} function.
+   *
+   * Note: Any `id`s that were not found in the collection will be ignored.
+   *
+   * @param ids - Model IDs to find.
+   *
+   * @returns An array of models that were deleted.
+   */
+  deleteById: (...ids: IdType[]) => Expand<Model>[]
+
+  /**
    * @returns The number of models in the collection.
    */
   count: () => number
@@ -424,6 +439,34 @@ const makeSchema = <S extends {}>(settings: Required<Pick<Settings<S>, 'schema'>
           }
 
           return context.results
+        },
+
+        deleteById: (...ids) => {
+          if (!ids.length) return []
+
+          const deleted: Model[] = []
+
+          for (const id of ids) {
+            const m = collection.cache.get(id)
+            if (m) {
+              deleted.push(m)
+            }
+            collection.cache.delete(id)
+          }
+
+          const remainingIds = [...ids]
+          collection.array = collection.array.filter((m) => {
+            if (!remainingIds.length) return true
+
+            const indexOfMatch = remainingIds.indexOf(m[schema.id.name])
+            const keep = indexOfMatch === -1
+            if (!keep) {
+              remainingIds.splice(indexOfMatch, 1)
+            }
+            return keep
+          })
+
+          return deleted
         },
 
         count: () => collection.array.length,
