@@ -479,7 +479,7 @@ describe('makeMemoryDB()', () => {
           })
 
           describe('reverse', () => {
-            it('should iterat in reverse', () => {
+            it('should iterate in reverse', () => {
               const r = db.schema.contact.find(matcher, stopper, { reverse: true })
 
               expect(r).toEqual([contacts[17], contacts[15]])
