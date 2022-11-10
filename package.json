@@ -2,7 +2,7 @@
   "name": "@nerdo/memorydb",
   "description": "nerdo's in-memory database, written in TypeScript",
   "sideEffects": false,
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Dannel Albert <cuebix@gmail.com>",
   "license": "MIT",
   "files": [
