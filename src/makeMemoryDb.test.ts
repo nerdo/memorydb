@@ -504,6 +504,53 @@ describe('makeMemoryDB()', () => {
         })
       })
 
+      describe('deleteById()', () => {
+        it('should delete a list of objects by id', () => {
+          const contact = z.object({
+            name: z.string(),
+            email: z.string().email(),
+          })
+
+          const contacts = [
+            { id: '0', name: 'Jane', email: 'jane@example.test' },
+            { id: '1', name: 'Bob', email: 'bob@example.test' },
+            { id: '2', name: 'Mary', email: 'mary@example.test' },
+            { id: '3', name: 'Rusty', email: 'rusty@example.test' },
+            { id: '4', name: 'Rick', email: 'rick@example.test' },
+            { id: '5', name: 'Michelle', email: 'michelle@example.test' },
+            { id: '6', name: 'Cathy', email: 'cathy@example.test' },
+          ]
+
+          const db = makeMemoryDB({
+            schema: {
+              contact,
+            },
+            seeder(db) {
+              db.schema.contact.load(...contacts)
+            },
+          })
+
+          const deleted = db.schema.contact.deleteById('4', '6', 'NOT FOUND', '1')
+
+          expect(deleted).toHaveLength(3)
+          expect(deleted.filter((m) => m.id === '4')).toHaveLength(1)
+          expect(deleted.filter((m) => m.id === '6')).toHaveLength(1)
+          expect(deleted.filter((m) => m.id === '1')).toHaveLength(1)
+
+          expect(db.schema.contact.findById('4')).toHaveLength(0)
+          expect(db.schema.contact.findById('6')).toHaveLength(0)
+          expect(db.schema.contact.findById('1')).toHaveLength(0)
+
+          const all = db.schema.contact.getAll()
+
+          expect(all).toHaveLength(4)
+          expect(db.schema.contact.count()).toBe(4)
+          expect(all.filter((m) => m.id === '4')).toHaveLength(0)
+          expect(all.filter((m) => m.id === '6')).toHaveLength(0)
+          expect(all.filter((m) => m.id === '1')).toHaveLength(0)
+        })
+      })
+
       describe('debug', () => {
         it('should have properties on it for the purpose of debugging', () => {
           const contact = z.object({
